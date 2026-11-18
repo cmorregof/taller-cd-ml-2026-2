@@ -26,11 +26,16 @@ print("Herramientas listas.")'''
 
 def cuaderno(celdas, estudiante):
     nb = nbf.v4.new_notebook()
+    contador = [0]
     for tipo, texto in celdas:
         texto = texto.strip("\n")
         if tipo == "md":
             nb.cells.append(nbf.v4.new_markdown_cell(texto))
         else:
+            def numerar(m):
+                contador[0] += 1
+                return f"HUECO {contador[0]}:"
+            texto = re.sub(r"HUECO \d+:", numerar, texto)
             texto = re.sub(r"«(.*?)»", "____" if estudiante else r"\1", texto)
             nb.cells.append(nbf.v4.new_code_cell(texto))
     nb.metadata["kernelspec"] = {"display_name": "Python 3", "language": "python", "name": "python3"}
@@ -49,10 +54,10 @@ Este cuaderno lo resuelvo yo en vivo durante la primera mitad de la clase. Usted
 
 | Ficha | |
 |---|---|
-| **Objetivo pedagógico** | Convertir una pregunta de la vida diaria en un problema de datos con métrica, vencer una línea base y validar respetando el tiempo. |
+| **Objetivo pedagógico** | Convertir una pregunta de la vida diaria en un problema de datos con métrica, explorarlo, comparar cinco modelos contra una línea base y validar respetando el tiempo. |
 | **Enfoque** | Ciencia de Datos. |
 | **Resultados de aprendizaje** | 1 (formular el problema, los objetivos y la métrica), 3 (flujo reproducible y trazable), 4 (implementar y evaluar un modelo) y 5 (comunicar a quien no es técnico). |
-| **Uso de IA** | Pueden pedirle a Claude que explique una línea de código o que escriba una gráfica. Deben poder explicar sin ayuda qué es una línea base, por qué no se barajan los meses y qué significa el error que reportan. |
+| **Uso de IA** | Pueden pedirle a Claude que explique una línea de código o que escriba una gráfica. Deben poder explicar sin ayuda qué es una línea base, por qué no se barajan los meses, por qué el ganador se escoge en validación y qué significa el error que reportan. |
 | **Entregable** | Este cuaderno corrido de principio a fin en su portafolio, con la decisión de la sección 4 escrita por ustedes. |
 '''),
 ("code", ARRANQUE),
@@ -139,14 +144,120 @@ print(f"Enero de 2013: ${olla.iloc[0]:,.0f} | Diciembre de 2024: ${olla.iloc[-1]
 Comparen con su apuesta. Ojo con lo que mide esta cifra: es el costo **mayorista** de los ingredientes en pesos corrientes. No incluye gas, mano de obra ni el margen de la tienda.
 '''),
 ("md", r'''
+### 2.1 Conocer el dato antes de modelarlo
+
+Antes de pronosticar nada conviene mirar el dato por cuatro lados: cuánto vale cada ingrediente, cuánto se mueve de un mes a otro, si tiene temporada y cuánta memoria tiene. Llamo $p_{i,t}$ al precio por kilo del ingrediente $i$ en el mes $t$ y $q_i$ a los kilos de la receta. El costo de la olla es
+
+$$C_t=\sum_{i=1}^{5} q_i\,p_{i,t},$$
+
+y la variación mensual de cada precio es
+
+$$r_{i,t}=\frac{p_{i,t}-p_{i,t-1}}{p_{i,t-1}}.$$
+'''),
+("code", r'''
+display(precios.describe().round(0))
+
+ejes = precios.plot(subplots=True, layout=(2, 3), figsize=(12, 5), legend=False, color="#16302B", lw=1.2)
+for eje, nombre in zip(ejes.ravel(), precios.columns):
+    eje.set_title(nombre, fontsize=9); eje.set_xlabel("")
+ejes.ravel()[-1].axis("off")
+plt.suptitle("Precio mayorista por kilo, Manizales"); plt.tight_layout(); plt.show()
+'''),
+("code", r'''
+cambios = precios.pct_change().dropna()            # variación mensual de cada ingrediente
+
+fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 4))
+(cambios * 100).plot.box(ax=izq, rot=20, color="#16302B")
+izq.set(title="Variación mensual por ingrediente", ylabel="%"); izq.tick_params(axis="x", labelsize=7)
+
+correlacion = cambios.corr()
+imagen = der.imshow(correlacion, cmap="RdBu_r", vmin=-1, vmax=1)
+der.set_xticks(range(5)); der.set_yticks(range(5))
+der.set_xticklabels([c[:12] for c in correlacion.columns], rotation=30, fontsize=7); der.set_yticklabels([c[:12] for c in correlacion.columns], fontsize=7)
+for a in range(5):
+    for b in range(5):
+        der.text(b, a, f"{correlacion.iloc[a, b]:.2f}", ha="center", va="center", fontsize=8)
+der.set_title("Correlación entre variaciones mensuales"); plt.colorbar(imagen, ax=der); plt.tight_layout(); plt.show()
+
+print("Desviación estándar de la variación mensual (%):")
+print((cambios.std() * 100).round(1).sort_values(ascending=False))
+'''),
+("md", r'''
+Dos lecturas. La primera es que hay ingredientes tranquilos e ingredientes nerviosos, y el más nervioso no tiene por qué ser el que más pesa en la olla. La segunda es que las variaciones casi no están correlacionadas entre sí: cada ingrediente tiene su propia historia. Eso lo retomamos con el PCA.
+
+**Temporada y memoria.** Para ver la temporada comparo cada mes con el promedio móvil de doce meses centrado en él. Para ver la memoria uso la autocorrelación de orden $k$:
+
+$$\hat\rho_k=\frac{\sum_{t=k+1}^{T}(C_t-\bar C)(C_{t-k}-\bar C)}{\sum_{t=1}^{T}(C_t-\bar C)^2}.$$
+'''),
+("code", r'''
+tendencia = olla.rolling(12, center=True).mean()
+indice_estacional = (olla / tendencia).groupby(olla.index.month).mean()
+
+fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(13, 3.6))
+((indice_estacional - 1) * 100).plot.bar(ax=izq, color="#E0A526")
+izq.set(title="Temporada: desvío frente a la tendencia", xlabel="mes", ylabel="%")
+
+rezagos = range(1, 25)
+centro.bar(rezagos, [olla.autocorr(k) for k in rezagos], color="#16302B")
+centro.set(title="Autocorrelación del costo", xlabel="rezago (meses)")
+der.bar(rezagos, [olla.pct_change().autocorr(k) for k in rezagos], color="#A8432C")
+der.axhline(2 / np.sqrt(len(olla)), color="gray", ls=":"); der.axhline(-2 / np.sqrt(len(olla)), color="gray", ls=":")
+der.set(title="Autocorrelación de la variación mensual", xlabel="rezago (meses)")
+plt.tight_layout(); plt.show()
+'''),
+("md", r'''
+La gráfica del centro dice que el costo de hoy se parece mucho al de los meses anteriores: la serie tiene memoria larga porque tiene tendencia. La de la derecha quita esa tendencia y pregunta algo más fino: si este mes subió, ¿el próximo también? Las líneas punteadas marcan la banda $\pm 2/\sqrt{T}$, dentro de la cual una autocorrelación no se distingue del ruido.
+
+Guarden esta imagen. Las variaciones tienen poca memoria: solo el primer rezago se asoma con claridad por fuera de la banda. Una serie cuyas variaciones no tienen memoria se llama **caminata aleatoria**, $C_{t+1}=C_t+\varepsilon_{t+1}$, y para una caminata aleatoria el mejor pronóstico es el último valor. La olla se le parece bastante, y eso anticipa lo que veremos en la sección 3.
+
+### 2.2 PCA: ¿los ingredientes se mueven juntos?
+
+El análisis de componentes principales busca las direcciones en que más varían los datos. Tomo la matriz $Z$ de variaciones mensuales estandarizadas, con una columna por ingrediente, y descompongo su matriz de correlaciones:
+
+$$R=\frac{1}{T-1}Z^\top Z=V\Lambda V^\top,\qquad \Lambda=\operatorname{diag}(\lambda_1\ge\dots\ge\lambda_5).$$
+
+Las columnas de $V$ son los componentes y $\lambda_j/\sum_k\lambda_k$ es la fracción de la varianza que explica el componente $j$. Si los cinco ingredientes obedecieran a una sola fuerza común, el primer componente explicaría casi todo. Si cada uno va por su lado, la varianza se reparte casi por igual, cerca de $1/5$ por componente.
+
+**Predicción escrita:** ¿cuánto explicará el primer componente? **Mi apuesta:**
+'''),
+("code", r'''
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+Z = StandardScaler().fit_transform(cambios)
+pca = PCA().fit(Z)
+explicada = pca.explained_variance_ratio_ * 100
+cargas = pd.DataFrame(pca.components_.T, index=cambios.columns, columns=[f"CP{j + 1}" for j in range(5)])
+
+fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 4))
+izq.bar(cargas.columns, explicada, color="#16302B"); izq.axhline(20, color="gray", ls=":")
+izq.set(title="Varianza explicada por componente", ylabel="%")
+for nombre, (x, y) in cargas[["CP1", "CP2"]].iterrows():
+    der.arrow(0, 0, x, y, color="#A8432C", head_width=0.02); der.text(x * 1.08, y * 1.08, nombre[:16], fontsize=8)
+der.axhline(0, color="gray", lw=0.5); der.axvline(0, color="gray", lw=0.5)
+der.set(title="Cargas de los dos primeros componentes", xlabel="CP1", ylabel="CP2", xlim=(-1, 1), ylim=(-1, 1))
+plt.tight_layout(); plt.show()
+
+print("Varianza explicada (%):", explicada.round(1))
+display(cargas.round(2))
+'''),
+("md", r'''
+Lean la gráfica de la izquierda contra la línea punteada de 20 %, que es lo que explicaría cada componente si los ingredientes fueran independientes. En la de la derecha, dos flechas que apuntan al mismo lado son ingredientes que suben y bajan juntos, y dos flechas en ángulo recto son ingredientes que no tienen que ver.
+
+El PCA aquí sirve para describir. No lo vamos a usar como entrada del modelo.
+'''),
+("md", r'''
 ## 3. Modelado
 
 ### 3.1 La línea base
 
-Todo modelo se mide contra el pronóstico más barato posible. Aquí hay dos candidatos que no cuestan nada:
+Todo modelo se mide contra el pronóstico más barato posible. Con horizonte $h=3$ meses hay dos candidatos que no cuestan nada:
 
-- **Ingenuo:** dentro de tres meses costará lo mismo que hoy.
-- **Estacional:** dentro de tres meses costará lo mismo que ese mes del año pasado.
+$$\hat C^{\text{ing}}_{t+h}=C_t\qquad\text{y}\qquad \hat C^{\text{est}}_{t+h}=C_{t+h-12}.$$
+
+El primero dice que dentro de tres meses costará lo mismo que hoy. El segundo, que costará lo mismo que ese mes del año pasado. El error se mide con
+
+$$\text{MAPE}=\frac{100}{n}\sum_{t}\left|\frac{C_{t+h}-\hat C_{t+h}}{C_{t+h}}\right|.$$
 
 Si un modelo sofisticado no les gana, no sirve, por elegante que sea.
 '''),
@@ -166,9 +277,11 @@ for metodo in ["ingenuo", "estacional"]:
 ("md", r'''
 Ya hay una cifra que vencer. Comparen con su tercera apuesta.
 
-### 3.2 Un modelo, y la trampa de barajar
+### 3.2 La trampa de barajar
 
-Probemos una regresión lineal que mira el costo de hoy, el de los dos meses anteriores y el del mismo mes objetivo un año atrás.
+Empecemos por el modelo más simple, una regresión lineal sobre el costo de hoy, el de los dos meses anteriores y el del mismo mes objetivo un año atrás:
+
+$$C_{t+h}=\beta_0+\beta_1C_t+\beta_2C_{t-1}+\beta_3C_{t-2}+\beta_4C_{t+h-12}+\varepsilon_{t+h}.$$
 '''),
 ("code", r'''
 X = pd.DataFrame({
@@ -200,11 +313,8 @@ for semilla in range(200):
 mape_barajado = float(np.mean(barajados))
 
 # Manera 2: respetando el tiempo
-corte = "2021-12-31"
-entreno, prueba = datos.loc[:corte], datos.loc[corte:].iloc[1:]
-modelo = LinearRegression().fit(entreno[variables], entreno["real"])
-pronostico = pd.Series(modelo.predict(prueba[variables]), index=prueba.index)
-mape_temporal = mape(prueba["real"], pronostico)
+antes, despues = datos.loc[:"2021-12-01"], datos.loc["2022-01-01":]
+mape_temporal = mape(despues["real"], LinearRegression().fit(antes[variables], antes["real"]).predict(despues[variables]))
 
 print(f"MAPE barajando (promedio de 200 sorteos): {mape_barajado:.1f} %")
 print(f"MAPE respetando el tiempo:                 {mape_temporal:.1f} %")
@@ -212,29 +322,126 @@ print(f"MAPE respetando el tiempo:                 {mape_temporal:.1f} %")
 ("md", r'''
 Los dos números miden el mismo modelo, así que la diferencia viene del examen. Al barajar, el modelo se entrena con meses de 2023 y lo examinan con meses de 2022: ya vio el futuro. Ese examen no se parece a lo que le pasará al dueño del negocio, que siempre pronostica hacia adelante. De aquí en adelante solo vale la validación que respeta el tiempo.
 
-### 3.3 El veredicto, con la misma regla para todos
+### 3.3 Cinco modelos y un protocolo para escoger
+
+Una regresión es un candidato entre muchos. Vamos a poner a competir cinco familias:
+
+| Modelo | Idea en una línea |
+|---|---|
+| Regresión lineal | $\hat y=\beta_0+x^\top\beta$, con $\beta$ que minimiza $\sum(y-\hat y)^2$ |
+| Ridge | Lo mismo, con castigo a los coeficientes grandes: $\min_\beta\sum(y-\hat y)^2+\alpha\lVert\beta\rVert_2^2$ |
+| $k$ vecinos | Promedia el resultado de los $k$ meses pasados más parecidos al de hoy |
+| Bosque aleatorio | Promedia muchos árboles de decisión entrenados sobre remuestreos del dato |
+| *Gradient boosting* | Suma árboles pequeños, cada uno corrigiendo el error del anterior |
+
+Si escogemos al ganador mirando la prueba, la prueba deja de ser un examen limpio: de cinco candidatos, alguno saldrá bien por suerte. Por eso el tiempo se parte en **tres** tramos:
+
+$$\underbrace{2013\ \dots\ 2019}_{\text{entrenamiento}}\ \Big|\ \underbrace{2020\ \dots\ 2021}_{\text{validación: se escoge}}\ \Big|\ \underbrace{2022\ \dots\ 2024}_{\text{prueba: se reporta}}$$
+
+Hay un detalle fino. La fila del mes $t$ lleva como respuesta el costo de $t+h$. Para que el entrenamiento no use respuestas que caen dentro del tramo siguiente, solo entran las filas con $t+h$ anterior al corte.
 '''),
 ("code", r'''
-comparacion = pd.DataFrame({
-    "real": prueba["real"],
-    "ingenuo": tabla.loc[prueba.index, "ingenuo"],
-    "estacional": tabla.loc[prueba.index, "estacional"],
-    "regresion": pronostico,
-})
-resumen = pd.Series({m: mape(comparacion["real"], comparacion[m]) for m in ["ingenuo", "estacional", "regresion"]}).round(1)
-print("MAPE en la prueba (2022 a 2024), en %:")
-print(resumen.sort_values())
+from sklearn.linear_model import Ridge
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
-comparacion.index = comparacion.index + pd.DateOffset(months=H)   # se grafica en el mes pronosticado
-ax = comparacion["real"].plot(color="black", lw=2, label="real")
-comparacion["ingenuo"].plot(ax=ax, color="#E0A526", label="ingenuo")
-comparacion["regresion"].plot(ax=ax, color="#A8432C", ls="--", label="regresión")
-ax.set(title="Pronóstico a tres meses contra el costo real", xlabel="", ylabel="pesos"); ax.legend(); plt.show()
+def cinco_modelos():
+    return {
+        "lineal": LinearRegression(),
+        "ridge": make_pipeline(StandardScaler(), Ridge(alpha=10)),
+        "k vecinos": make_pipeline(StandardScaler(), KNeighborsRegressor(n_neighbors=5)),
+        "bosque": RandomForestRegressor(n_estimators=300, random_state=0),
+        "boosting": GradientBoostingRegressor(random_state=0),
+    }
+
+objetivo = datos.index + pd.DateOffset(months=H)                 # el mes que cada fila intenta adivinar
+E = objetivo <= pd.Timestamp("2019-12-01")                        # entrenamiento
+V = (datos.index >= "2020-01-01") & (objetivo <= pd.Timestamp("2021-12-01"))   # validación
+P = datos.index >= "2022-01-01"                                   # prueba
+print(f"Entrenamiento: {E.sum()} meses | Validación: {V.sum()} | Prueba: {P.sum()}")
+
+def competir(entradas, respuesta, a_pesos):
+    """Mide cada modelo en validación; luego lo reentrena con entrenamiento y validación y lo mide en prueba."""
+    errores, pronosticos = {}, {}
+    for nombre, modelo in cinco_modelos().items():
+        modelo.fit(entradas[E], respuesta[E])
+        en_validacion = mape(datos["real"][V], a_pesos(modelo.predict(entradas[V]), V))
+        modelo.fit(entradas[E | V], respuesta[E | V])
+        pronosticos[nombre] = pd.Series(a_pesos(modelo.predict(entradas[P]), P), index=datos.index[P])
+        errores[nombre] = {"validación": en_validacion, "prueba": mape(datos["real"][P], pronosticos[nombre])}
+    return pd.DataFrame(errores).T, pd.DataFrame(pronosticos)
+
+errores_nivel, pron_nivel = competir(datos[variables], datos["real"], lambda pred, tramo: pred)
+bases = pd.DataFrame({m: {"validación": mape(datos["real"][V], tabla.loc[datos.index[V], m]),
+                          "prueba": mape(datos["real"][P], tabla.loc[datos.index[P], m])} for m in ["ingenuo", "estacional"]}).T
+display(pd.concat([bases, errores_nivel]).round(1))
+'''),
+("code", r'''
+fechas = datos.index[P] + pd.DateOffset(months=H)
+plt.figure(figsize=(11, 4))
+plt.plot(fechas, datos["real"][P], color="black", lw=2.5, label="real")
+plt.plot(fechas, tabla.loc[datos.index[P], "ingenuo"], color="#E0A526", lw=1.5, label="ingenuo")
+for nombre in pron_nivel:
+    plt.plot(fechas, pron_nivel[nombre], lw=1, ls="--", label=nombre)
+plt.axhline(datos["real"][E | V].max(), color="gray", ls=":")
+plt.text(fechas[0], datos["real"][E | V].max() * 1.005, "máximo visto antes de 2022", fontsize=8, color="gray")
+plt.title("Pronóstico a tres meses en la prueba"); plt.ylabel("pesos"); plt.legend(fontsize=8, ncol=4); plt.show()
 '''),
 ("md", r'''
-Lean la tabla con calma antes de opinar. Si la regresión no le gana con claridad al pronóstico ingenuo, la respuesta honesta para el cliente es el pronóstico ingenuo, que además se explica en una frase. Un modelo que empata con la línea base solo agrega complejidad.
+Miren las líneas del bosque, del *boosting* y de los vecinos contra la línea punteada. Un árbol predice promediando respuestas que ya vio, y un vecino también. Ninguno puede pronosticar un costo más alto que el máximo de su entrenamiento. La olla de 2022 a 2024 cuesta más que cualquier olla anterior, así que esos modelos se quedan pegados al techo. Los modelos lineales sí extrapolan.
 
-### 3.4 Explicar: ¿qué ingrediente mueve el costo?
+Esto tiene arreglo, y el arreglo es una decisión de formulación. En vez de pedirles el **nivel** del costo, les pedimos el **cambio relativo**:
+
+$$y_t=\frac{C_{t+h}}{C_t},\qquad \hat C_{t+h}=\hat y_t\,C_t.$$
+
+El cambio relativo de 2023 se parece a los cambios relativos de 2015, aunque los precios sean otros. Las entradas también se dividen por el costo de hoy.
+'''),
+("code", r'''
+relativas = datos[variables].div(datos["hoy"], axis=0).drop(columns="hoy")
+relativas["mes_sen"] = np.sin(2 * np.pi * datos.index.month / 12)
+relativas["mes_cos"] = np.cos(2 * np.pi * datos.index.month / 12)
+razon = datos["real"] / datos["hoy"]
+
+errores_cambio, pron_cambio = competir(relativas, razon, lambda pred, tramo: pred * datos["hoy"][tramo].values)
+
+todos = pd.concat([bases,
+                   errores_nivel.rename(index=lambda n: n + " (nivel)"),
+                   errores_cambio.rename(index=lambda n: n + " (cambio)")])
+todos.sort_values("validación").plot.barh(figsize=(9, 5), color=["#16302B", "#E0A526"])
+plt.xlabel("MAPE (%)"); plt.title("Doce candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
+display(todos.sort_values("validación").round(1))
+'''),
+("md", r'''
+### 3.4 El veredicto
+
+La regla quedó fijada antes de mirar: gana quien tenga menor MAPE en **validación**, y su error en **prueba** es el que se le reporta al cliente.
+'''),
+("code", r'''
+mejor = todos["validación"].idxmin()
+resumen = todos["prueba"].round(1)
+print(f"Ganador en validación: {mejor}")
+print(f"Su MAPE en prueba: {resumen[mejor]} %   |   MAPE del ingenuo en prueba: {resumen['ingenuo']} %")
+
+pronosticos_prueba = pd.concat([tabla.loc[datos.index[P], ["ingenuo", "estacional"]],
+                                pron_nivel.rename(columns=lambda n: n + " (nivel)"),
+                                pron_cambio.rename(columns=lambda n: n + " (cambio)")], axis=1)
+plt.figure(figsize=(11, 3.8))
+plt.plot(fechas, datos["real"][P], color="black", lw=2.5, label="real")
+plt.plot(fechas, pronosticos_prueba["ingenuo"], color="#E0A526", label="ingenuo")
+if mejor != "ingenuo":
+    plt.plot(fechas, pronosticos_prueba[mejor], color="#A8432C", ls="--", label=mejor)
+plt.title("El ganador contra la línea base"); plt.ylabel("pesos"); plt.legend(); plt.show()
+'''),
+("md", r'''
+Lean el resultado con calma. Puede pasar que el ganador de validación pierda en prueba contra el pronóstico ingenuo. Eso no es un error del procedimiento: es el procedimiento diciendo la verdad sobre un dato con poca memoria en sus variaciones, como vimos en la sección 2.1. Un modelo que empata con la línea base solo agrega complejidad, y la respuesta honesta para el cliente es la más simple que no pierde.
+
+### 3.5 Explicar: ¿qué ingrediente mueve el costo?
+
+Como el costo es una suma, el alza total se reparte de forma exacta entre ingredientes:
+
+$$C_T-C_1=\sum_{i=1}^{5}q_i\,(p_{i,T}-p_{i,1}).$$
 '''),
 ("code", r'''
 participacion = (costo_por_ingrediente.iloc[-1] / olla.iloc[-1] * 100).round(1).sort_values(ascending=False)
@@ -256,26 +463,37 @@ Esta explicación es una descomposición contable: dice cuánto pesa cada ingred
 
 ### 4.1 Decidir: ¿con cuánto se presupuesta la olla?
 
-Un pronóstico de un solo número deja al cliente sin saber cuánto puede fallar. Usamos los errores de la prueba para ponerle un margen. La pregunta del cliente es «con qué costo presupuesto para no quedar corto», así que nos interesa cuánto se queda corto el pronóstico en los meses malos.
+Un pronóstico de un solo número deja al cliente sin saber cuánto puede fallar. Usamos los errores de la prueba para ponerle un margen. Sea $u_t=C_{t+h}/\hat C_{t+h}-1$ lo que el costo real superó al pronóstico. El margen es el cuantil 0,90 de esos valores, y el costo para presupuestar es
+
+$$\hat C_{T+h}\,\bigl(1+\hat Q_{0{,}90}(u)\bigr).$$
+
+Escogemos el método más simple entre los que no pierden: si el ganador de validación no mejora al ingenuo en la prueba, nos quedamos con el ingenuo.
 '''),
 ("code", r'''
-mejor = resumen.idxmin()
-comparacion_original = comparacion.copy(); comparacion_original.index = prueba.index
-subestimacion = (comparacion_original["real"] / comparacion_original[mejor] - 1)   # positivo: el costo real salió más alto
-margen = subestimacion.quantile(0.90)
+elegido = mejor if resumen[mejor] < resumen["ingenuo"] else "ingenuo"
+u = datos["real"][P] / pronosticos_prueba[elegido] - 1
+margen = u.quantile(0.90)
 
 hoy = olla.index[-1]
-if mejor == "ingenuo":
+ultima = X.iloc[[-1]]
+if elegido == "ingenuo":
     punto = olla.iloc[-1]
-elif mejor == "estacional":
+elif elegido == "estacional":
     punto = olla.shift(12 - H).iloc[-1]
 else:
-    punto = float(modelo.predict(X.iloc[[-1]][variables])[0])
+    nombre, tipo = elegido.rsplit(" (", 1)
+    modelo = cinco_modelos()[nombre]
+    if tipo.startswith("nivel"):
+        punto = float(modelo.fit(datos[variables], datos["real"]).predict(ultima[variables])[0])
+    else:
+        ultima_rel = ultima[variables].div(ultima["hoy"], axis=0).drop(columns="hoy")
+        ultima_rel["mes_sen"] = np.sin(2 * np.pi * hoy.month / 12); ultima_rel["mes_cos"] = np.cos(2 * np.pi * hoy.month / 12)
+        punto = float(modelo.fit(relativas, razon).predict(ultima_rel)[0]) * olla.iloc[-1]
 
-print(f"Método elegido: {mejor} (MAPE {resumen[mejor]} %)")
 meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
-objetivo = hoy + pd.DateOffset(months=H)
-print(f"Pronóstico para {meses[objetivo.month - 1]} de {objetivo.year}: ${punto:,.0f}")
+destino_mes = hoy + pd.DateOffset(months=H)
+print(f"Método elegido: {elegido} (MAPE en prueba {resumen[elegido]} %)")
+print(f"Pronóstico para {meses[destino_mes.month - 1]} de {destino_mes.year}: ${punto:,.0f}")
 print(f"En 9 de cada 10 meses de prueba, el costo real no superó al pronóstico en más de {margen * 100:.1f} %")
 print(f"Costo para presupuestar: ${punto * (1 + margen):,.0f}")
 '''),
@@ -295,7 +513,8 @@ Escríbanla para alguien que no sabe qué es una regresión. Una frase para lo q
 | Variedades de la receta (papa capira, yuca ICA, plátano dominico hartón) | Otras variedades | Se reportan todos los meses en la Galería |
 | Horizonte de tres meses | Un mes, seis meses | Es lo que dura la carta impresa |
 | MAPE como métrica | Error en pesos | El cliente piensa en márgenes |
-| Corte temporal en diciembre de 2021 | Separación al azar | Al barajar, el modelo ve el futuro |
+| Tres tramos temporales: hasta 2019, 2020 a 2021 y 2022 a 2024 | Separación al azar; escoger mirando la prueba | Al barajar, el modelo ve el futuro; si se escoge en la prueba, la prueba deja de ser examen |
+| Pronosticar el cambio relativo además del nivel | Solo el nivel | Árboles y vecinos no extrapolan por encima de lo visto |
 | Margen con el percentil 90 de los meses de prueba | Intervalo teórico | Sale de errores observados y se explica sin fórmulas |
 
 ### 4.3 Riesgos y mantenimiento
@@ -327,10 +546,10 @@ Este cuaderno lo resuelve cada uno, de forma individual, en la segunda mitad de 
 
 | Ficha | |
 |---|---|
-| **Objetivo pedagógico** | Repetir por cuenta propia el camino de la clase: formular, limpiar, vencer una línea base con validación temporal y convertir el resultado en una decisión. |
+| **Objetivo pedagógico** | Repetir por cuenta propia el camino de la clase: formular, limpiar, explorar, comparar cinco modelos contra una línea base con validación temporal y convertir el resultado en una decisión. |
 | **Enfoque** | Ciencia de Datos. |
 | **Resultados de aprendizaje** | 1 (formular), 2 (seleccionar y preparar datos), 3 (flujo reproducible), 4 (implementar y evaluar) y 5 (comunicar). |
-| **Uso de IA** | Pueden pedirle a Claude que explique una celda, que les ayude a llenar un hueco o que interprete un error. Deben poder explicar sin ayuda la regla con que se escogió la versión del precio, por qué el corte es temporal y qué significa su MAPE. |
+| **Uso de IA** | Pueden pedirle a Claude que explique una celda, que les ayude a llenar un hueco o que interprete un error. Deben poder explicar sin ayuda la regla con que se escogió la versión del precio, por qué los tramos son temporales, por qué el ganador se escoge en validación y qué significa su MAPE. |
 | **Entregable** | El cuaderno completo y corrido en su portafolio de GitHub, con las predicciones escritas, la decisión en tres frases y la bitácora llenas. |
 
 **Cómo se trabaja.** El código está escrito casi todo. Donde vean `____` falta una pieza, y el comentario de al lado dice qué va. Lean la celda entera antes de llenar. Si una celda falla, lean el error antes de pedir ayuda.
@@ -343,18 +562,18 @@ En Colombia la energía se compra y se vende cada hora en un mercado que adminis
 
 Imagínense una empresa mediana de Manizales que gasta mucha energía. Puede comprarla al precio de bolsa, que cambia todos los días, o firmar un precio fijo. Su gerente necesita tres respuestas:
 
-1. **Predecir.** ¿Cuál será el precio de bolsa promedio dentro de siete días?
+1. **Predecir.** ¿Cuál será el precio de bolsa promedio de mañana? ¿Y el de dentro de siete días?
 2. **Explicar.** ¿Cuánto del precio se entiende mirando el nivel de los embalses?
-3. **Decidir.** Si le ofrecen un precio fijo para la semana entrante, ¿desde qué valor le conviene firmar?
+3. **Decidir.** Si le ofrecen un precio fijo, ¿desde qué valor le conviene firmar? ¿Cambia la respuesta si el contrato es para mañana o para la otra semana?
 
-**La métrica** es la misma de la clase: el MAPE del pronóstico, ahora a siete días.
+**La métrica** es la misma de la clase: el MAPE del pronóstico, primero a un día y después a siete.
 
 ### Predicción escrita
 
 Escriban su apuesta antes de correr nada.
 
 - ¿Cuánto vale hoy un kilovatio hora en bolsa, en pesos? **Mi apuesta:**
-- ¿Qué tan lejos queda el precio de dentro de siete días del precio de hoy, en porcentaje? **Mi apuesta:**
+- ¿Qué tan lejos queda el precio de mañana del precio de hoy, en porcentaje? ¿Y el de dentro de siete días? **Mi apuesta:**
 - Cuando los embalses están llenos, ¿el precio es alto o bajo? **Mi apuesta:**
 '''),
 ("md", r'''
@@ -453,24 +672,96 @@ print(len(datos), "días, de", datos.index.min().date(), "a", datos.index.max().
 datos["embalse"].plot(color="#3E7CB1"); plt.title("Nivel agregado de los embalses (%)"); plt.xlabel(""); plt.show()
 '''),
 ("md", r'''
+### 2.4 Conocer el dato antes de modelarlo
+
+Cuatro miradas rápidas: a qué horas es cara la energía, si el día de la semana importa, cómo se reparten los precios y cuánta memoria tiene la serie. Llamo $P_t$ al precio promedio del día $t$.
+'''),
+("code", r'''
+horario["hora"] = pd.to_datetime(horario["FechaHora"]).dt.hour
+dias = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+
+fig, ejes = plt.subplots(2, 2, figsize=(12, 7))
+horario.groupby("hora")["Valor"].«median»().plot(ax=ejes[0, 0], color="#16302B", marker="o", ms=3)      # HUECO 5: un resumen que no se deje arrastrar por los días extremos
+ejes[0, 0].set(title="Precio mediano por hora del día", xlabel="hora", ylabel="COP/kWh")
+
+por_dia_semana = datos["precio"].groupby(datos.index.dayofweek).median()
+ejes[0, 1].bar(dias, por_dia_semana.values, color="#E0A526"); ejes[0, 1].set(title="Precio mediano por día de la semana")
+
+ejes[1, 0].hist(np.log10(datos["precio"]), bins=40, color="#A8432C")
+ejes[1, 0].set(title="Distribución del precio diario (escala logarítmica)", xlabel="log10 del precio")
+
+rezagos = range(1, 31)
+ejes[1, 1].bar(rezagos, [datos["precio"].autocorr(k) for k in rezagos], color="#16302B")
+ejes[1, 1].set(title="Autocorrelación del precio diario", xlabel="rezago (días)")
+plt.tight_layout(); plt.show()
+print(f"Media: {datos['precio'].mean():.0f} | Mediana: {datos['precio'].median():.0f} | Máximo: {datos['precio'].max():.0f} COP/kWh")
+'''),
+("md", r'''
+Respondan en una línea cada una.
+
+- ¿A qué hora es más cara la energía, y por qué creen? **Mi lectura:**
+- La media y la mediana no coinciden. ¿Qué dice eso de la forma de la distribución? **Mi lectura:**
+- La autocorrelación de orden $k$ es $\hat\rho_k=\dfrac{\sum_t (P_t-\bar P)(P_{t-k}-\bar P)}{\sum_t (P_t-\bar P)^2}$. ¿El precio de hoy se parece al de ayer? ¿Y al de hace un mes? **Mi lectura:**
+
+### 2.5 PCA: ¿los embalses se llenan y se vacían juntos?
+
+En clase usamos PCA para ver si los ingredientes se movían juntos. Aquí la pregunta es la misma con los embalses. Tomo el porcentaje de llenado de cada embalse, lo estandarizo y descompongo la matriz de correlaciones:
+
+$$R=V\Lambda V^\top,\qquad \text{varianza explicada por el componente } j=\frac{\lambda_j}{\sum_k\lambda_k}.$$
+
+**Predicción escrita:** hay más de veinte embalses. Si todos dependieran de la misma lluvia, ¿cuánto explicaría el primer componente? **Mi apuesta:**
+'''),
+("code", r'''
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+llenado = sin_repetir.assign(pct=sin_repetir["VolumenUtilDiarioEnergia"] / sin_repetir["CapacidadUtilEnergia"] * 100)
+llenado = llenado[llenado["CapacidadUtilEnergia"] > 0].pivot_table(index="fecha", columns="CodigoEmbalse", values="pct")
+llenado = llenado.drop(columns=[c for c in llenado if c.startswith("AGREGADO")]).ffill().dropna()
+
+pca = PCA().fit(StandardScaler().fit_transform(llenado))
+explicada = pca.explained_variance_ratio_ * 100
+cargas = pd.DataFrame(pca.components_.T[:, :2], index=llenado.columns, columns=["CP1", "CP2"])
+region = sin_repetir.drop_duplicates("CodigoEmbalse").set_index("CodigoEmbalse")["RegionHidrologica"]
+
+fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 4.5))
+izq.bar(range(1, 9), explicada[:«8»], color="#16302B")                                    # HUECO 6: cuántos componentes mostrar para que coincida con el eje
+izq.set(title="Varianza explicada por componente", xlabel="componente", ylabel="%")
+for nombre_region, grupo in cargas.groupby(region.reindex(cargas.index)):
+    der.scatter(grupo["CP1"], grupo["CP2"], label=nombre_region, s=40)
+for nombre, (x, y) in cargas.iterrows():
+    der.text(x, y, " " + nombre, fontsize=6)
+der.axhline(0, color="gray", lw=0.5); der.axvline(0, color="gray", lw=0.5)
+der.set(title="Cada punto es un embalse", xlabel="CP1", ylabel="CP2"); der.legend(fontsize=7)
+plt.tight_layout(); plt.show()
+print(f"{llenado.shape[1]} embalses | Los dos primeros componentes explican {explicada[:2].sum():.0f} % de la varianza")
+'''),
+("md", r'''
+- ¿Los embalses de una misma región hidrológica quedan cerca en la gráfica? **Mi lectura:**
+- ¿Sirve resumir todos los embalses en un solo número, como hicimos con el nivel agregado? **Mi respuesta:**
+'''),
+("md", r'''
 ## 3. Modelado
 
 ### 3.1 La línea base
 
-Dos pronósticos que no cuestan nada:
+Con horizonte $h$ días, dos pronósticos que no cuestan nada:
 
-- **Ingenuo:** dentro de siete días el precio será el de hoy.
-- **Promedio semanal:** dentro de siete días el precio será el promedio de los últimos siete días.
+$$\hat P^{\text{ing}}_{t+h}=P_t\qquad\text{y}\qquad \hat P^{\text{sem}}_{t+h}=\frac{1}{7}\sum_{j=0}^{6}P_{t-j}.$$
+
+El error se mide igual que en clase: $\text{MAPE}=\dfrac{100}{n}\sum_t\left|\dfrac{P_{t+h}-\hat P_{t+h}}{P_{t+h}}\right|$.
+
+Empezamos con $h=1$: el precio de mañana. Al final del cuaderno cambiarán esa línea por $h=7$.
 '''),
 ("code", r'''
-H = 7                                                         # horizonte: siete días
-tabla = pd.DataFrame({"real": datos["precio"].shift(«-H»)})   # HUECO 5: el desplazamiento que trae el precio de dentro de H días a la fila de hoy
+H = 1                                                         # horizonte en días. Al final lo cambiarán por 7.
+tabla = pd.DataFrame({"real": datos["precio"].shift(«-H»)})   # HUECO 7: el desplazamiento que trae el precio de dentro de H días a la fila de hoy
 tabla["ingenuo"] = datos["precio"]
 tabla["promedio_7"] = datos["precio"].rolling(7).mean()
 tabla = tabla.dropna()
 
 def mape(real, pronostico):
-    return float((abs(real - pronostico) / «real»).mean() * 100)   # HUECO 6: ¿contra qué se compara el error para volverlo porcentaje?
+    return float((abs(real - pronostico) / «real»).mean() * 100)   # HUECO 8: ¿contra qué se compara el error para volverlo porcentaje?
 
 for metodo in ["ingenuo", "promedio_7"]:
     print(f"MAPE {metodo}: {mape(tabla['real'], tabla[metodo]):.1f} %")
@@ -478,91 +769,146 @@ for metodo in ["ingenuo", "promedio_7"]:
 ("md", r'''
 Comparen con su segunda apuesta.
 
-### 3.2 Un modelo, con validación temporal
+### 3.2 Cinco modelos y el mismo protocolo de la clase
 
-La regresión mira el precio de hoy, el promedio de la semana y el nivel de los embalses.
+Los cinco candidatos son los de la clase: regresión lineal, Ridge, $k$ vecinos, bosque aleatorio y *gradient boosting*. Les pedimos el **cambio relativo** $y_t=P_{t+h}/P_t$ y no el nivel, por la razón que vimos con el sancocho: los árboles y los vecinos no pueden pronosticar por encima de lo que ya vieron.
 
-**Predicción escrita:** ¿le ganará la regresión al pronóstico ingenuo? **Mi apuesta:**
+El tiempo se parte en tres tramos:
+
+$$\underbrace{2023\ \dots\ 2024}_{\text{entrenamiento}}\ \Big|\ \underbrace{\text{ene}\ \dots\ \text{jun } 2025}_{\text{validación: se escoge}}\ \Big|\ \underbrace{\text{jul } 2025\ \dots\ \text{oct } 2026}_{\text{prueba: se reporta}}$$
+
+**Predicción escrita:** ¿algún modelo le ganará al pronóstico ingenuo en la prueba? **Mi apuesta:**
 '''),
 ("code", r'''
+from sklearn.linear_model import Ridge
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+def cinco_modelos():
+    return {
+        "lineal": LinearRegression(),
+        "ridge": make_pipeline(StandardScaler(), Ridge(alpha=10)),
+        "k vecinos": make_pipeline(StandardScaler(), KNeighborsRegressor(n_neighbors=«5»)),   # HUECO 0: cuántos vecinos promedia el modelo. En clase usamos 5
+        "bosque": RandomForestRegressor(n_estimators=300, random_state=0),
+        "boosting": GradientBoostingRegressor(random_state=0),
+    }
+
 X = pd.DataFrame({
-    "hoy": datos["precio"],
-    "promedio_7": datos["precio"].rolling(7).mean(),
+    "ayer": datos["precio"].shift(1) / datos["precio"],
+    "promedio_7": datos["precio"].rolling(7).mean() / datos["precio"],
+    "promedio_30": datos["precio"].rolling(30).mean() / datos["precio"],
     "embalse": datos["embalse"],
+    "embalse_cambio_7": datos["embalse"] - datos["embalse"].shift(7),
+    "dia_semana": datos.index.dayofweek,
 })
-base = X.join(datos["precio"].shift(-H).rename("real")).dropna()
+base = X.join(datos["precio"].rename("hoy")).join(datos["precio"].shift(-H).rename("real")).dropna()
 variables = list(X.columns)
+razon = base["real"] / base["hoy"]
 
-corte = "2025-06-30"
-entreno = base.loc[:corte]
-prueba = base.loc[«corte»:].iloc[1:]                            # HUECO 7: la prueba empieza donde termina el entrenamiento
-modelo = LinearRegression().fit(entreno[variables], entreno[«"real"»])   # HUECO 8: la columna que el modelo debe aprender a adivinar
-pronostico = pd.Series(modelo.predict(prueba[variables]), index=prueba.index)
+objetivo = base.index + pd.Timedelta(days=H)                    # el día que cada fila intenta adivinar
+E = objetivo <= pd.Timestamp("2024-12-31")
+V = (base.index >= "2025-01-01") & (objetivo <= pd.Timestamp(«"2025-06-30"»))   # HUECO 10: la fecha en que termina la validación, entre comillas
+P = base.index >= "2025-07-01"
+print(f"Entrenamiento: {E.sum()} días | Validación: {V.sum()} | Prueba: {P.sum()}")
 
-comparacion = pd.DataFrame({
-    "real": prueba["real"],
-    "ingenuo": tabla.loc[prueba.index, "ingenuo"],
-    "promedio_7": tabla.loc[prueba.index, "promedio_7"],
-    "regresion": pronostico,
-})
-resumen = pd.Series({m: mape(comparacion["real"], comparacion[m]) for m in ["ingenuo", "promedio_7", "regresion"]}).round(1)
-print(f"Entrenamiento: {len(entreno)} días | Prueba: {len(prueba)} días")
-print("MAPE en la prueba, en %:")
-print(resumen.sort_values())
+errores, pronosticos = {}, {}
+for nombre, modelo in cinco_modelos().items():
+    modelo.fit(base[variables][E], razon[E])                    # se entrena solo con el pasado
+    en_validacion = mape(base["real"][V], modelo.predict(base[variables][V]) * base["hoy"][V])
+    modelo.fit(base[variables][E | V], razon[E | V])            # se reentrena con todo lo anterior a la prueba
+    pronosticos[nombre] = pd.Series(modelo.predict(base[variables][P]) * base["hoy"][P].values, index=base.index[P])
+    errores[nombre] = {"validación": en_validacion, "prueba": mape(base["real"][P], pronosticos[nombre])}
+
+for metodo in ["ingenuo", "promedio_7"]:
+    errores[metodo] = {"validación": mape(base["real"][V], tabla.loc[base.index[V], metodo]),
+                       "prueba": mape(base["real"][P], tabla.loc[base.index[P], metodo])}
+    pronosticos[metodo] = tabla.loc[base.index[P], metodo]
+todos = pd.DataFrame(errores).T
+pronosticos_prueba = pd.DataFrame(pronosticos)
+
+todos.sort_values("validación").plot.barh(figsize=(9, 4), color=["#16302B", "#E0A526"])
+plt.xlabel("MAPE (%)"); plt.title("Siete candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
+display(todos.sort_values("validación").round(1))
 '''),
 ("md", r'''
-**¿Por qué el corte es una fecha y no un sorteo?** Respondan en dos líneas, con sus palabras: **Mi respuesta:**
+**¿Por qué el ganador se escoge en validación y no en prueba?** Respondan en dos líneas, con sus palabras: **Mi respuesta:**
 '''),
 ("code", r'''
-grafica = comparacion.copy(); grafica.index = grafica.index + pd.Timedelta(days=H)
-ax = grafica["real"].plot(color="black", lw=1.5, label="real")
-grafica["ingenuo"].plot(ax=ax, color="#E0A526", lw=1, label="ingenuo")
-grafica["regresion"].plot(ax=ax, color="#A8432C", lw=1, ls="--", label="regresión")
-ax.set(title="Pronóstico a siete días contra el precio real", xlabel="", ylabel="COP/kWh"); ax.legend(); plt.show()
+mejor = todos[«"validación"»].idxmin()                          # HUECO 11: la columna con la que se escoge al ganador
+resumen = todos["prueba"].round(1)
+print(f"Ganador en validación: {mejor}")
+print(f"Su MAPE en prueba: {resumen[mejor]} %   |   MAPE del ingenuo en prueba: {resumen['ingenuo']} %")
+
+fechas = base.index[P] + pd.Timedelta(days=H)
+plt.figure(figsize=(11, 3.8))
+plt.plot(fechas, base["real"][P], color="black", lw=1.5, label="real")
+plt.plot(fechas, pronosticos_prueba["ingenuo"], color="#E0A526", lw=1, label="ingenuo")
+if mejor != "ingenuo":
+    plt.plot(fechas, pronosticos_prueba[mejor], color="#A8432C", lw=1, ls="--", label=mejor)
+plt.title(f"Pronóstico a {H} día(s) contra el precio real"); plt.ylabel("COP/kWh"); plt.legend(); plt.show()
 '''),
 ("md", r'''
 ### 3.3 Explicar: ¿cuánto del precio se entiende con los embalses?
+
+Dos medidas de asociación. La de Pearson mide relación lineal. La de Spearman mide si una variable sube cuando la otra baja, sin exigir una recta:
+
+$$r=\frac{\sum_t (x_t-\bar x)(y_t-\bar y)}{\sqrt{\sum_t (x_t-\bar x)^2\sum_t (y_t-\bar y)^2}},\qquad r_s=r\ \text{calculado sobre los rangos}.$$
 '''),
 ("code", r'''
-correlacion = datos["precio"].corr(datos[«"embalse"»])           # HUECO 9: la otra variable de la relación
-print(f"Correlación entre precio y nivel de embalses: {correlacion:.2f}")
+pearson = datos["precio"].corr(datos[«"embalse"»])               # HUECO 9: la otra variable de la relación
+spearman = datos["precio"].corr(datos["embalse"], method="spearman")
+print(f"Pearson: {pearson:.2f} | Spearman: {spearman:.2f}")
 
-plt.scatter(datos["embalse"], datos["precio"], s=6, alpha=0.4, color="#16302B")
-plt.xlabel("Nivel agregado de embalses (%)"); plt.ylabel("Precio de bolsa (COP/kWh)")
-plt.title("Cada punto es un día"); plt.show()
+fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 4))
+puntos = izq.scatter(datos["embalse"], datos["precio"], s=6, c=datos.index.year, cmap="viridis")
+izq.set(xlabel="Nivel agregado de embalses (%)", ylabel="Precio de bolsa (COP/kWh)", yscale="log", title="Cada punto es un día, coloreado por año")
+plt.colorbar(puntos, ax=izq, ticks=sorted(set(datos.index.year)))
 
-print("Precio promedio según el nivel de los embalses:")
-print(datos.groupby(pd.cut(datos["embalse"], [0, 40, 50, 60, 70, 100]), observed=True)["precio"].agg(["mean", "count"]).round(0))
+modelo_bosque = cinco_modelos()["bosque"].fit(base[variables], razon)
+pd.Series(modelo_bosque.feature_importances_, index=variables).sort_values().plot.barh(ax=der, color="#16302B")
+der.set(title="Importancia de cada variable en el bosque aleatorio"); plt.tight_layout(); plt.show()
+
+print("Precio mediano según el nivel de los embalses:")
+print(datos.groupby(pd.cut(datos["embalse"], [0, 40, 50, 60, 70, 100]), observed=True)["precio"].agg(["median", "count"]).round(0))
 '''),
 ("md", r'''
 Comparen con su tercera apuesta. Luego respondan:
 
-- ¿La relación es una línea recta? **Mi lectura:**
+- ¿La relación es una línea recta? ¿Cambia de un año a otro? **Mi lectura:**
 - Una correlación no prueba que los embalses causen el precio. ¿Qué otra cosa podría mover las dos variables a la vez? **Mi respuesta:**
+- La importancia de una variable en el bosque dice cuánto la usa el modelo para pronosticar el cambio de mañana. ¿Es eso lo mismo que explicar el precio? **Mi respuesta:**
 '''),
 ("md", r'''
 ## 4. Comunicación
 
 ### 4.1 Decidir: ¿desde qué precio fijo conviene firmar?
 
-Con los errores de la prueba armamos una franja alrededor del pronóstico. Usamos el método que ganó en la sección 3.
+Con los errores de la prueba armamos una franja alrededor del pronóstico. Sea $c_t=P_{t+h}/\hat P_{t+h}$ el cociente entre lo real y lo pronosticado. La franja que contiene 8 de cada 10 días es
+
+$$\Bigl[\hat P_{T+h}\,\hat Q_{0{,}10}(c),\ \ \hat P_{T+h}\,\hat Q_{0{,}90}(c)\Bigr].$$
+
+Usamos el método más simple entre los que no pierden: si el ganador de validación no mejora al ingenuo en la prueba, nos quedamos con el ingenuo.
 '''),
 ("code", r'''
-mejor = resumen.idxmin()
-razon = comparacion["real"] / comparacion[mejor]               # real dividido entre pronosticado, día por día
-bajo, alto = razon.quantile(0.10), razon.quantile(«0.90»)      # HUECO 10: el percentil que deja por debajo 9 de cada 10 días
+elegido = mejor if resumen[mejor] < resumen["ingenuo"] else "ingenuo"
+cociente = base["real"][P] / pronosticos_prueba[elegido]
+bajo, alto = cociente.quantile(0.10), cociente.quantile(«0.90»)      # HUECO 12: el cuantil que deja por debajo 9 de cada 10 días
 
 hoy = datos.index[-1]
-if mejor == "ingenuo":
+if elegido == "ingenuo":
     punto = datos["precio"].iloc[-1]
-elif mejor == "promedio_7":
+elif elegido == "promedio_7":
     punto = datos["precio"].rolling(7).mean().iloc[-1]
 else:
-    punto = float(modelo.predict(X.iloc[[-1]][variables])[0])
+    modelo = cinco_modelos()[elegido].fit(base[variables], razon)
+    punto = float(modelo.predict(X.iloc[[-1]][variables])[0]) * datos["precio"].iloc[-1]
 
-print(f"Método elegido: {mejor} (MAPE {resumen[mejor]} %)")
+print(f"Horizonte: {H} día(s) | Método elegido: {elegido} (MAPE en prueba {resumen[elegido]} %)")
 print(f"Pronóstico para el {(hoy + pd.Timedelta(days=H)).date()}: {punto:.0f} COP/kWh")
 print(f"Franja de 8 de cada 10 días: entre {punto * bajo:.0f} y {punto * alto:.0f} COP/kWh")
+print(f"Ancho de la franja: de {bajo:.2f} a {alto:.2f} veces el pronóstico")
 '''),
 ("md", r'''
 Lean la franja así. Si a la empresa le ofrecen un precio fijo por debajo del borde inferior, casi siempre le conviene firmar. Si se lo ofrecen por encima del borde superior, casi siempre le conviene la bolsa. En el medio, la decisión depende de cuánto le duele un susto.
@@ -585,7 +931,8 @@ Llenen las filas vacías. La primera va de ejemplo.
 | Versión del precio | | |
 | Filas de embalses que se quitaron | | |
 | Promedio diario simple | | |
-| Corte temporal en junio de 2025 | | |
+| Tres tramos: entrenamiento, validación y prueba | | |
+| Pronosticar el cambio relativo y no el nivel | | |
 | Franja con percentiles 10 y 90 | | |
 
 ### 4.3 Riesgos y mantenimiento
@@ -595,7 +942,22 @@ Llenen las filas vacías. La primera va de ejemplo.
 - El promedio diario simple trata igual la hora de las 3 de la mañana y la de las 7 de la noche. ¿A qué empresa le sirve mal ese promedio?
 - Si llega un fenómeno de El Niño, ¿en cuál de sus tres respuestas confiarían menos?
 
-### 4.4 Procedencia y entrega
+### 4.4 Cambien una línea
+
+Vuelvan a la celda donde dice `H = 1`, pongan `H = 7` y corran todo de nuevo con *Entorno de ejecución*, *Ejecutar todo*. Llenen la tabla con sus dos corridas.
+
+| | $h=1$ | $h=7$ |
+|---|---|---|
+| MAPE del ingenuo en prueba | | |
+| Ganador en validación | | |
+| MAPE del ganador en prueba | | |
+| Ancho de la franja | | |
+
+Con la tabla llena, respondan en tres líneas: ¿cuánto le cuesta al gerente, en incertidumbre, cada día adicional de anticipación? ¿Qué le dice eso sobre el precio fijo? **Mi respuesta:**
+
+Dejen el cuaderno entregado con `H = 7` corrido y la tabla completa.
+
+### 4.5 Procedencia y entrega
 '''),
 ("code", r'''
 procedencia()
