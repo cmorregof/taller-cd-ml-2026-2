@@ -1,6 +1,14 @@
 pandas>=2.2
 numpy
+scipy
 matplotlib
 scikit-learn
 requests
 nbformat
+pyarrow
+pillow
+plotly
+# Solo para algunas clases (en Colab ya vienen instalados o el cuaderno los instala):
+#   clases 5 y 6: torch, torchvision
+#   clase 8: soundfile, librosa
+#   clase 9: fastapi, uvicorn, httpx, anthropic

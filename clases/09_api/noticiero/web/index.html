@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El noticiero de un minuto</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 44rem; margin: 2rem auto; padding: 0 1rem; color: #16302B; line-height: 1.5; }
+  h1 { margin-bottom: 0.2rem; }
+  .nota { color: #555; font-size: 0.9rem; }
+  input, button { font: inherit; padding: 0.4rem 0.7rem; }
+  input { width: 7rem; }
+  button { background: #16302B; color: white; border: 0; border-radius: 4px; cursor: pointer; }
+  button:disabled { background: #999; cursor: wait; }
+  #estado { margin: 1rem 0; padding: 0.6rem 0.8rem; background: #f4efe4; border-left: 4px solid #E0A526; }
+  #estado.error { border-left-color: #A8432C; }
+  article { margin-top: 1.2rem; }
+  audio { width: 100%; margin-top: 0.8rem; }
+  .aviso { color: #A8432C; }
+</style>
+</head>
+<body>
+<h1>El noticiero de un minuto</h1>
+<p class="nota">Una noticia de El País (corpus MLSUM, 2019), resumida por un modelo de lenguaje y leída por una voz sintética. Ningún periodista revisó este resumen.</p>
+
+<p>
+  <label for="indice">Noticia número</label>
+  <input id="indice" type="number" min="0" max="13919" value="0">
+  <button id="otra" type="button">Otra al azar</button>
+  <button id="hacer" type="button">Hacer el noticiero</button>
+</p>
+
+<div id="estado">Escoja una noticia y oprima el botón.</div>
+
+<article id="salida" hidden>
+  <h2 id="titulo"></h2>
+  <p class="nota"><span id="datos"></span> · <a id="enlace" target="_blank" rel="noopener">Leer la noticia completa en El País</a></p>
+  <p id="resumen"></p>
+  <p class="nota" id="medidas"></p>
+  <p class="aviso" id="aviso" hidden></p>
+  <audio id="audio" controls hidden></audio>
+</article>
+
+<script src="config.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+
+function decir(texto, esError = false) {
+  $("estado").textContent = texto;
+  $("estado").className = esError ? "error" : "";
+}
+
+async function pedir(ruta, opciones) {
+  const respuesta = await fetch(API + ruta, opciones);
+  if (!respuesta.ok) {
+    let detalle = "";
+    try { detalle = (await respuesta.json()).detail; } catch (e) { /* la respuesta no era JSON */ }
+    throw new Error(`La API respondió ${respuesta.status}. ${detalle}`);
+  }
+  return respuesta;
+}
+
+async function hacerNoticiero() {
+  const indice = parseInt($("indice").value, 10);
+  $("hacer").disabled = true;
+  $("audio").hidden = true; $("aviso").hidden = true; $("resumen").textContent = ""; $("medidas").textContent = "";
+  try {
+    decir("Traigo la noticia…");
+    const noticia = await (await pedir(`/noticia/${indice}`)).json();
+    $("salida").hidden = false;
+    $("titulo").textContent = noticia.titulo;
+    $("datos").textContent = `${noticia.fecha} · ${noticia.tema} · ${noticia.palabras} palabras`;
+    $("enlace").href = noticia.url;
+
+    decir("Claude escribe el resumen…");
+    const resumen = await (await pedir(`/resumen/${indice}`, { method: "POST" })).json();
+    $("resumen").textContent = resumen.resumen;
+    $("medidas").textContent = `${resumen.palabras} palabras · unos ${resumen.segundos_estimados} segundos al aire · modelo ${resumen.modelo}`;
+    if (resumen.cifras_sin_respaldo.length > 0) {
+      $("aviso").textContent = "Cifras del resumen que no están en la noticia: " + resumen.cifras_sin_respaldo.join(", ") + ". Este resumen necesita revisión.";
+      $("aviso").hidden = false;
+    }
+
+    decir("ElevenLabs graba la voz…");
+    const audio = await (await pedir("/voz", { method: "POST", headers: { "Content-Type": "application/json" },
+                                               body: JSON.stringify({ texto: resumen.resumen }) })).blob();
+    $("audio").src = URL.createObjectURL(audio);
+    $("audio").hidden = false;
+    decir("Listo. Oprima reproducir.");
+  } catch (error) {
+    decir(error.message, true);
+  } finally {
+    $("hacer").disabled = false;
+  }
+}
+
+$("hacer").addEventListener("click", hacerNoticiero);
+$("otra").addEventListener("click", () => { $("indice").value = Math.floor(Math.random() * 13920); });
+
+// Un enlace como index.html?indice=25 abre la página y hace el noticiero de esa noticia.
+const pedido = new URLSearchParams(window.location.search).get("indice");
+if (pedido !== null) { $("indice").value = pedido; hacerNoticiero(); }
+</script>
+</body>
+</html>

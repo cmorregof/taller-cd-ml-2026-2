@@ -10,6 +10,15 @@ Cada clase tiene dos cuadernos. El primero lo resuelve el profesor en vivo. El s
 | # | Fecha | En vivo | Gemelo |
 |---|---|---|---|
 | 1 | Vie 20 nov | [El sancocho](clases/01_formular/01a_el_sancocho.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/01_formular/01a_el_sancocho.ipynb) | [El precio de la luz](clases/01_formular/01b_el_precio_de_la_luz.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/01_formular/01b_el_precio_de_la_luz.ipynb) |
+| 2 | Sáb 21 nov | [El ICFES](clases/02_limpieza/02a_el_icfes.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/02_limpieza/02a_el_icfes.ipynb) | [Dengue](clases/02_limpieza/02b_dengue.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/02_limpieza/02b_dengue.ipynb) |
+| 3 | Mar 24 nov | [La factura de Londres](clases/03_datos_grandes/03a_la_factura_de_londres.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/03_datos_grandes/03a_la_factura_de_londres.ipynb) | [El cielo de Caldas](clases/03_datos_grandes/03b_el_cielo_de_caldas.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/03_datos_grandes/03b_el_cielo_de_caldas.ipynb) |
+| 4 | Vie 27 nov | [El Mundial de Qatar](clases/04_desbalance/04a_el_mundial_de_qatar.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/04_desbalance/04a_el_mundial_de_qatar.ipynb) | [Las calles de Bogotá](clases/04_desbalance/04b_las_calles_de_bogota.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/04_desbalance/04b_las_calles_de_bogota.ipynb) |
+| 5 | Sáb 28 nov | [Lunares](clases/05_imagenes/05a_lunares.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/05_imagenes/05a_lunares.ipynb) | [La roya](clases/05_imagenes/05b_la_roya.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/05_imagenes/05b_la_roya.ipynb) |
+| 6 | Mar 1 dic | [La tierra desde arriba](clases/06_cambio_de_dominio/06a_la_tierra_desde_arriba.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/06_cambio_de_dominio/06a_la_tierra_desde_arriba.ipynb) | [Fauna de la Orinoquía](clases/06_cambio_de_dominio/06b_fauna_de_la_orinoquia.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/06_cambio_de_dominio/06b_fauna_de_la_orinoquia.ipynb) |
+| 7 | Vie 4 dic | [Lo que dicen los turistas](clases/07_texto/07a_lo_que_dicen_los_turistas.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/07_texto/07a_lo_que_dicen_los_turistas.ipynb) | [La plata pública](clases/07_texto/07b_la_plata_publica.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/07_texto/07b_la_plata_publica.ipynb) |
+| 8 | Sáb 5 dic | [El electrocardiograma](clases/08_senales/08a_el_electrocardiograma.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/08_senales/08a_el_electrocardiograma.ipynb) | [Los sonidos del Magdalena](clases/08_senales/08b_los_sonidos_del_magdalena.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/08_senales/08b_los_sonidos_del_magdalena.ipynb) |
+| 9 | Mié 9 dic | [El noticiero de un minuto](clases/09_api/09a_el_noticiero_de_un_minuto.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/09_api/09a_el_noticiero_de_un_minuto.ipynb) | [El parte de incendios](clases/09_api/09b_el_parte_de_incendios.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/09_api/09b_el_parte_de_incendios.ipynb) |
+| 10 | Vie 11 dic | [La cifra que falta](clases/10_incertidumbre/10a_la_cifra_que_falta.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/10_incertidumbre/10a_la_cifra_que_falta.ipynb) | [El mapa de vuelos](clases/10_incertidumbre/10b_el_mapa_de_vuelos.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/10_incertidumbre/10b_el_mapa_de_vuelos.ipynb) |
 
 ## Cómo se usan los datos
 
@@ -22,11 +31,13 @@ tabla = descargar("sipsa")
 
 La función baja el dato de la fuente oficial, lo deja en `datos/cache/` y anota de dónde salió, cuándo y con qué huella MD5. Los datos no se guardan en este repositorio: algunas fuentes no permiten republicarlos y otras pesan demasiado.
 
-| Nombre | Qué es | Fuente | Tiempo aproximado |
-|---|---|---|---|
-| `sipsa` | Precios mayoristas mensuales de alimentos, 2013 a 2024 | DANE, Microdatos, catálogo 776 | 30 segundos |
-| `xm_precio` | Precio de bolsa horario, 2023 a octubre de 2026 | XM, SiMEM, conjunto EC6945 | 3 a 4 minutos |
-| `xm_embalses` | Energía útil por embalse y día, 2023 a octubre de 2026 | XM, SiMEM, conjunto c51127 | 2 a 3 minutos |
+La lista completa de datos, con su fuente y su licencia, está en el catálogo:
+
+```python
+from taller import CATALOGO
+for nombre, ficha in CATALOGO.items():
+    print(nombre, "|", ficha["fuente"])
+```
 
 ## Para correrlo en un computador propio
 

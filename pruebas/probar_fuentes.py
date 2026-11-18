@@ -54,6 +54,20 @@ prueba("DANE, SIPSA 2024", dane)
 prueba("XM, precio de bolsa (EC6945)", precio)
 prueba("XM, embalses (c51127)", embalses)
 
+# Las demás clases traen su propia prueba en pruebas/fuentes_claseNN.py, con una función probar().
+import importlib.util
+
+for archivo in sorted(Path(__file__).resolve().parent.glob("fuentes_clase*.py")):
+    especificacion = importlib.util.spec_from_file_location(archivo.stem, archivo)
+    modulo = importlib.util.module_from_spec(especificacion)
+    try:
+        especificacion.loader.exec_module(modulo)
+    except Exception as error:
+        fallas.append(archivo.stem)
+        print(f"FALLA  {archivo.stem}: no se pudo cargar: {error!r}")
+        continue
+    prueba(archivo.stem.replace("fuentes_", ""), modulo.probar)
+
 if fallas:
     print(f"\n{len(fallas)} fuente(s) con problemas: {', '.join(fallas)}")
     sys.exit(1)

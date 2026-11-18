@@ -73,11 +73,11 @@ def _md5(tabla: pd.DataFrame) -> str:
     return hashlib.md5(tabla.to_csv(index=False).encode("utf-8")).hexdigest()
 
 
-def _registrar(nombre: str, tabla: pd.DataFrame, origen: str) -> None:
+def _registrar(nombre: str, tabla: pd.DataFrame, origen: str, clave: str | None = None) -> None:
     CACHE.mkdir(parents=True, exist_ok=True)
     archivo = CACHE / "procedencia.json"
     registro = json.loads(archivo.read_text(encoding="utf-8")) if archivo.exists() else {}
-    registro[nombre] = {
+    registro[clave or nombre] = {
         "titulo": CATALOGO[nombre]["titulo"],
         "fuente": CATALOGO[nombre]["fuente"],
         "origen": origen,
@@ -85,6 +85,8 @@ def _registrar(nombre: str, tabla: pd.DataFrame, origen: str) -> None:
         "filas": int(len(tabla)),
         "md5": _md5(tabla),
     }
+    if clave and clave != nombre:      # el nombre a secas apunta siempre a la última variante descargada
+        registro[nombre] = dict(registro[clave], variante=clave)
     archivo.write_text(json.dumps(registro, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
@@ -138,6 +140,6 @@ def descargar(nombre: str, forzar: bool = False, **opciones) -> pd.DataFrame:
 
     CACHE.mkdir(parents=True, exist_ok=True)
     tabla.to_csv(en_cache, index=False)
-    _registrar(nombre, tabla, origen)
+    _registrar(nombre, tabla, origen, clave=archivo.removesuffix(".csv.gz"))
     print(f"[{nombre}] Listo: {len(tabla):,} filas.".replace(",", "."))
     return pd.read_csv(en_cache)
