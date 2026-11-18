@@ -1,0 +1,9 @@
+# Datos descargados: cada quien los baja de la fuente oficial
+datos/cache/
+# Copias de respaldo para el salón (no se publican)
+respaldo/
+# Material del profesor: soluciones y cuadernos corridos
+_profesor/
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
