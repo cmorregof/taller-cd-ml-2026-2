@@ -59,6 +59,16 @@ CATALOGO = {
 }
 
 
+# Cada clase registra sus datos en un módulo propio, taller/fuentes_claseNN.py,
+# que define un diccionario FICHAS con el mismo formato de CATALOGO.
+import importlib
+import pkgutil
+
+for _modulo in pkgutil.iter_modules([str(Path(__file__).resolve().parent)]):
+    if _modulo.name.startswith("fuentes_clase"):
+        CATALOGO.update(importlib.import_module(f"{__package__}.{_modulo.name}").FICHAS)
+
+
 def _md5(tabla: pd.DataFrame) -> str:
     return hashlib.md5(tabla.to_csv(index=False).encode("utf-8")).hexdigest()
 
