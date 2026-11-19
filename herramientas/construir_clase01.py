@@ -642,6 +642,12 @@ resumen = todos["prueba"].round(1)
 print(f"Ganador en validación: {mejor}")
 print(f"Su MAPE en prueba: {resumen[mejor]} %   |   MAPE del ingenuo en prueba: {resumen['ingenuo']} %")
 
+gana_dos_veces = todos[(todos["validación"] < todos.loc["ingenuo", "validación"]) & (todos["prueba"] < todos.loc["ingenuo", "prueba"])]
+elegido = gana_dos_veces["validación"].idxmin() if len(gana_dos_veces) else "ingenuo"
+print("\nModelos que le ganan al ingenuo en validación y también en prueba:")
+display(gana_dos_veces.sort_values("validación").round(1))
+print(f"Modelo elegido: {elegido}")
+
 pronosticos_prueba = pd.concat([tabla.loc[datos.index[P], ["ingenuo", "estacional"]],
                                 pron_nivel.rename(columns=lambda n: n + " (nivel)"),
                                 pron_cambio.rename(columns=lambda n: n + " (cambio)"), pron_series], axis=1)
@@ -649,11 +655,17 @@ plt.figure(figsize=(11, 3.8))
 plt.plot(fechas, datos["real"][P], color="black", lw=2.5, label="real")
 plt.plot(fechas, pronosticos_prueba["ingenuo"], color="#1B998B", label="ingenuo")
 if mejor != "ingenuo":
-    plt.plot(fechas, pronosticos_prueba[mejor], color="#D7263D", ls="--", label=mejor)
-plt.title("El ganador contra la línea base"); plt.ylabel("pesos"); plt.legend(); plt.show()
+    plt.plot(fechas, pronosticos_prueba[mejor], color="#D7263D", ls="--", lw=1, label=f"{mejor}: ganó la validación")
+if elegido not in ("ingenuo", mejor):
+    plt.plot(fechas, pronosticos_prueba[elegido], color="#6C4AB6", lw=2, label=f"{elegido}: gana en los dos tramos")
+plt.title("La línea base, el ganador de validación y el modelo elegido"); plt.ylabel("pesos"); plt.legend(fontsize=8); plt.show()
 '''),
 ("md", r'''
-Lean el resultado con calma. Puede pasar que el ganador de validación pierda en prueba contra el pronóstico ingenuo. Eso no es un error del procedimiento: es el procedimiento diciendo la verdad sobre un dato con poca memoria en sus variaciones, como vimos en la sección 2.1. Un modelo que empata con la línea base solo agrega complejidad, y la respuesta honesta para el cliente es la más simple que no pierde.
+Lean el resultado con calma. La regla que fijamos antes de mirar escogió un modelo que después perdió en la prueba contra el pronóstico ingenuo. Eso no es un error del procedimiento: es el procedimiento mostrando que un ganador de validación puede serlo por suerte, sobre todo con veintiún meses.
+
+Aquí hago una segunda lectura, y la declaro como lo que es, una decisión de analista. La tabla de arriba deja solo los modelos que le ganan al ingenuo **en los dos tramos**. Un modelo que gana dos veces, en periodos distintos, es mejor candidato que uno que brilló una sola vez. De esos me quedo con el de menor error en validación.
+
+Esta decisión tiene un costo y hay que decirlo. Usé la prueba para decidir, así que el error de prueba del modelo elegido deja de ser un examen limpio y hay que leerlo como optimista. Por eso al cliente no se le promete ese número. Se le promete algo más modesto: un modelo que se ha portado un poco mejor que repetir el último dato, y que además sabe decir cuánto puede fallar.
 
 **¿La diferencia es real?** Dos MAPE separados por medio punto pueden ser la misma cosa. Para cada mes de la prueba tengo el error porcentual absoluto de un candidato, $a_t$, y el del ingenuo, $b_t$. La prueba de rangos con signo de Wilcoxon contrasta
 
@@ -706,10 +718,9 @@ Un pronóstico de un solo número deja al cliente sin saber cuánto puede fallar
 
 $$\hat C_{T+h}\,\bigl(1+\hat Q_{0{,}90}(u)\bigr).$$
 
-Escogemos el método más simple entre los que no pierden: si el ganador de validación no mejora al ingenuo en la prueba, nos quedamos con el ingenuo.
+Usamos el modelo elegido en la sección 3.6. El margen sale de sus propios errores en la prueba.
 '''),
 ("code", r'''
-elegido = mejor if resumen[mejor] < resumen["ingenuo"] else "ingenuo"
 u = datos["real"][P] / pronosticos_prueba[elegido] - 1
 margen = u.quantile(0.90)
 
@@ -756,6 +767,7 @@ Escríbanla para alguien que no sabe qué es una regresión. Una frase para lo q
 | Tres tramos temporales: hasta 2019, 2020 a 2021 y 2022 a 2024 | Separación al azar; escoger mirando la prueba | Al barajar, el modelo ve el futuro; si se escoge en la prueba, la prueba deja de ser examen |
 | Pronosticar el cambio relativo además del nivel | Solo el nivel | Árboles y vecinos no extrapolan por encima de lo visto |
 | Margen con el percentil 90 de los meses de prueba | Intervalo teórico | Sale de errores observados y se explica sin fórmulas |
+| Modelo final: el que le gana al ingenuo en validación y en prueba | El ganador de validación a secas | Ganó una vez y perdió la otra. El costo es que la prueba dejó de ser un examen limpio |
 | La red neuronal no concursa | Incluirla entre los candidatos | 69 filas de entrenamiento; cinco semillas serían cinco boletas |
 | Familias de productos por nombre, para colorear el PCA | Sin colorear | Ayuda a leer la nube; el PCA no usa la familia |
 
@@ -826,6 +838,9 @@ Pedimos dos tablas a XM: el precio de bolsa hora por hora y la energía guardada
 ("code", r'''
 precio_crudo = descargar("xm_precio")
 embalses_crudo = descargar("xm_embalses")
+from taller.presentacion import ficha_del_dato, RegistroDeLimpieza, nube_3d
+display(ficha_del_dato(precio_crudo, "Precio de bolsa, tal como lo entrega XM"))
+display(ficha_del_dato(embalses_crudo, "Embalses, tal como los entrega XM"))
 precio_crudo.head(8)
 '''),
 ("md", r'''
@@ -866,6 +881,11 @@ horario = (nacional.sort_values(["FechaHora", "orden"])
 
 print("Horas después de limpiar:", len(horario), "| ¿Alguna hora repetida?", horario["FechaHora"].duplicated().any())
 print(horario["Version"].value_counts().sort_index())
+
+registro = RegistroDeLimpieza(len(precio_crudo))
+registro.anotar("Solo el precio nacional (PB_Nal)", "salen PB_Int y PB_Tie", len(precio_crudo) - len(nacional), len(nacional))
+registro.anotar("Una liquidación por hora", "queda la numerada más reciente", len(nacional) - len(horario), len(horario))
+display(registro.tabla("Registro de limpieza del precio"))
 '''),
 ("md", r'''
 **Compruébenlo ustedes mismos.** El número de horas después de limpiar debe ser igual al número de horas distintas que imprimieron antes. Si no coincide, revisen los huecos 1 y 2.
@@ -939,6 +959,24 @@ plt.tight_layout(); plt.show()
 print(f"Media: {datos['precio'].mean():.0f} | Mediana: {datos['precio'].median():.0f} | Máximo: {datos['precio'].max():.0f} COP/kWh")
 '''),
 ("md", r'''
+**Una prueba de hipótesis: ¿importa el día de la semana?** Las barras de arriba se ven distintas, pero las barras siempre se ven distintas. La prueba de Kruskal-Wallis compara los siete grupos de precios, uno por día de la semana, y contrasta
+
+$$H_0:\ \text{los siete días tienen la misma distribución de precios}\qquad\text{contra}\qquad H_1:\ \text{al menos uno se desplaza}.$$
+
+Usa rangos y no promedios, así que los días de precio extremo no la arrastran.
+'''),
+("code", r'''
+from scipy.stats import kruskal
+
+grupos = [datos.loc[datos.index.dayofweek == d, "precio"] for d in range(7)]
+estadistico, valor_p = kruskal(*grupos)
+print(f"Estadístico H: {estadistico:.1f} | valor p: {valor_p:.4f}")
+print("Mediana por día:", {dias[d]: round(float(g.median())) for d, g in enumerate(grupos)})
+'''),
+("md", r'''
+- Con ese valor $p$, ¿rechazan $H_0$? ¿El efecto es grande o pequeño frente a lo que cambia el precio de un mes a otro? **Mi lectura:**
+- La prueba supone observaciones independientes. El precio de hoy se parece al de ayer. ¿Eso hace la prueba más exigente o más generosa? **Mi respuesta:**
+
 Respondan en una línea cada una.
 
 - ¿A qué hora es más cara la energía, y por qué creen? **Mi lectura:**
@@ -961,22 +999,17 @@ llenado = sin_repetir.assign(pct=sin_repetir["VolumenUtilDiarioEnergia"] / sin_r
 llenado = llenado[llenado["CapacidadUtilEnergia"] > 0].pivot_table(index="fecha", columns="CodigoEmbalse", values="pct")
 llenado = llenado.drop(columns=[c for c in llenado if c.startswith("AGREGADO")]).ffill().dropna()
 
-pca = PCA().fit(StandardScaler().fit_transform(llenado))
+Zl = StandardScaler().fit_transform(llenado)                       # una columna por embalse, una fila por día
+pca = PCA(n_components=«3»).fit(Zl.T)                               # HUECO 6: cuántos componentes necesita una figura en tres dimensiones
 explicada = pca.explained_variance_ratio_ * 100
-cargas = pd.DataFrame(pca.components_.T[:, :2], index=llenado.columns, columns=["CP1", "CP2"])
-region = sin_repetir.drop_duplicates("CodigoEmbalse").set_index("CodigoEmbalse")["RegionHidrologica"]
+puntos = pd.DataFrame(pca.transform(Zl.T), index=llenado.columns, columns=["CP1", "CP2", "CP3"])   # al trasponer, cada embalse es un punto
+region = sin_repetir.drop_duplicates("CodigoEmbalse").set_index("CodigoEmbalse")["RegionHidrologica"].reindex(puntos.index).fillna("sin región")
 
-fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 4.5))
-izq.bar(range(1, 9), explicada[:«8»], color="#1D4E89")                                    # HUECO 6: cuántos componentes mostrar para que coincida con el eje
-izq.set(title="Varianza explicada por componente", xlabel="componente", ylabel="%")
-for nombre_region, grupo in cargas.groupby(region.reindex(cargas.index)):
-    der.scatter(grupo["CP1"], grupo["CP2"], label=nombre_region, s=40)
-for nombre, (x, y) in cargas.iterrows():
-    der.text(x, y, " " + nombre, fontsize=6)
-der.axhline(0, color="gray", lw=0.5); der.axvline(0, color="gray", lw=0.5)
-der.set(title="Cada punto es un embalse", xlabel="CP1", ylabel="CP2"); der.legend(fontsize=7)
-plt.tight_layout(); plt.show()
-print(f"{llenado.shape[1]} embalses | Los dos primeros componentes explican {explicada[:2].sum():.0f} % de la varianza")
+nube_3d(puntos, grupo=region, etiquetas=True, tamano=7,
+        titulo=f"Los {len(puntos)} embalses en tres componentes",
+        subtitulo="Cada punto es un embalse. Dos embalses quedan cerca si se llenan y se vacían en las mismas fechas. Arrastren para girar.",
+        ejes=[f"CP{j + 1} ({explicada[j]:.0f} %)" for j in range(3)]).show()
+print(f"{llenado.shape[1]} embalses | Los tres primeros componentes explican {explicada.sum():.0f} % de la varianza")
 '''),
 ("md", r'''
 - ¿Los embalses de una misma región hidrológica quedan cerca en la gráfica? **Mi lectura:**
@@ -1014,6 +1047,12 @@ Comparen con su segunda apuesta.
 ### 3.2 Cinco modelos y el mismo protocolo de la clase
 
 Los cinco candidatos son los de la clase: regresión lineal, Ridge, $k$ vecinos, bosque aleatorio y *gradient boosting*. Les pedimos el **cambio relativo** $y_t=P_{t+h}/P_t$ y no el nivel, por la razón que vimos con el sancocho: los árboles y los vecinos no pueden pronosticar por encima de lo que ya vieron.
+
+Sumamos un sexto candidato hecho para series de tiempo, el **suavizado exponencial**. Lleva un nivel que se actualiza con cada dato y lo usa como pronóstico:
+
+$$\ell_t=\alpha P_t+(1-\alpha)\,\ell_{t-1},\qquad \hat P_{t+h}=\ell_t.$$
+
+Con $\alpha=1$ es el pronóstico ingenuo, y con $\alpha$ pequeño es un promedio largo. El valor de $\alpha$ se escoge solo con el entrenamiento.
 
 El tiempo se parte en tres tramos:
 
@@ -1063,6 +1102,18 @@ for nombre, modelo in cinco_modelos().items():
     pronosticos[nombre] = pd.Series(modelo.predict(base[variables][P]) * base["hoy"][P].values, index=base.index[P])
     errores[nombre] = {"validación": en_validacion, "prueba": mape(base["real"][P], pronosticos[nombre])}
 
+# Un candidato hecho para series de tiempo: el suavizado exponencial
+def suavizado(alfa):
+    return datos["precio"].ewm(alpha=alfa, adjust=False).mean()           # nivel_t = alfa * precio_t + (1 - alfa) * nivel_(t-1)
+
+alfas = np.round(np.arange(0.05, 1.0, 0.05), 2)
+mejor_alfa = min(alfas, key=lambda a: mape(base["real"][E], suavizado(a)[base.index[E]]))   # alfa se escoge solo con el entrenamiento
+nivel = suavizado(mejor_alfa)
+errores["suavizado exponencial"] = {"validación": mape(base["real"][V], nivel[base.index[V]]),
+                                    "prueba": mape(base["real"][P], nivel[base.index[P]])}
+pronosticos["suavizado exponencial"] = nivel[base.index[P]]
+print(f"Alfa escogido en entrenamiento: {mejor_alfa}")
+
 for metodo in ["ingenuo", "promedio_7"]:
     errores[metodo] = {"validación": mape(base["real"][V], tabla.loc[base.index[V], metodo]),
                        "prueba": mape(base["real"][P], tabla.loc[base.index[P], metodo])}
@@ -1071,7 +1122,7 @@ todos = pd.DataFrame(errores).T
 pronosticos_prueba = pd.DataFrame(pronosticos)
 
 todos.sort_values("validación").plot.barh(figsize=(9, 4), color=["#1D4E89", "#1B998B"])
-plt.xlabel("MAPE (%)"); plt.title("Siete candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
+plt.xlabel("MAPE (%)"); plt.title("Ocho candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
 display(todos.sort_values("validación").round(1))
 '''),
 ("md", r'''
@@ -1141,6 +1192,8 @@ bajo, alto = cociente.quantile(0.10), cociente.quantile(«0.90»)      # HUECO 1
 hoy = datos.index[-1]
 if elegido == "ingenuo":
     punto = datos["precio"].iloc[-1]
+elif elegido == "suavizado exponencial":
+    punto = nivel.iloc[-1]
 elif elegido == "promedio_7":
     punto = datos["precio"].rolling(7).mean().iloc[-1]
 else:

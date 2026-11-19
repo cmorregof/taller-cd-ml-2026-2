@@ -73,6 +73,8 @@ CUPO = 0.25                  # fracción de estudiantes para la que alcanza el p
 crudo = descargar("saber11", departamento=DEPARTAMENTO)
 print("Filas:", len(crudo), "| Columnas:", crudo.shape[1], "| Colegios:", crudo["cole_cod_dane_establecimiento"].nunique())
 print("¿Algún estudiante repetido?", crudo["estu_consecutivo"].duplicated().any())
+from taller.presentacion import ficha_del_dato, RegistroDeLimpieza, resumen_pca, nube_3d, CIELO, ROJO
+display(ficha_del_dato(crudo, f"Saber 11 2020-2, {DEPARTAMENTO.title()}"))
 crudo.head(3).T
 '''),
 ("md", r'''
@@ -155,6 +157,13 @@ X, y, colegio, datos = X[validas], y[validas], colegio[validas], crudo[validas]
 variables = list(X.columns)
 print(f"Quedan {len(X)} estudiantes y {len(variables)} variables.")
 print(f"Quedan en el cuarto más bajo del país: {y.mean() * 100:.1f} %")
+
+registro = RegistroDeLimpieza(len(crudo))
+registro.anotar("Puntaje global igual a cero", "la fila sale: la prueba no se calificó", int((~validas).sum()), int(validas.sum()))
+registro.anotar("Fecha de nacimiento imposible o vacía", "la edad queda como faltante; la fila se queda", int(X["edad"].isna().sum()))
+registro.anotar("«No sabe» y «No Aplica» en la educación de la madre", "se tratan como faltantes; la fila se queda", int(datos["fami_educacionmadre"].isin(["No sabe", "No Aplica"]).sum()))
+registro.anotar("Filas con alguna celda vacía", "no se borran: se imputan con la mediana del entrenamiento", int(X.isna().any(axis=1).sum()))
+display(registro.tabla())
 '''),
 ("md", r'''
 Comparen con su primera apuesta. Si el departamento fuera una copia del país, ese número sería 25 %.
@@ -162,6 +171,10 @@ Comparen con su primera apuesta. Si el departamento fuera una copia del país, e
 **Cuarta trampa: los faltantes no caen al azar.** La salida fácil para las celdas vacías es `dropna()`, que borra toda fila con algún faltante. Antes de usarla hay que preguntarse quiénes son los que no respondieron. Llamo $m_i=1$ al estudiante con alguna variable faltante. Borrar filas es inofensivo solo si la respuesta no depende de eso:
 
 $$P(y=1\mid m=1)=P(y=1\mid m=0).$$
+
+Esa igualdad es una hipótesis nula, $H_0$, y se puede contrastar. Con la tabla de dos por dos que cruza «tiene faltantes» con «quedó abajo», la prueba ji-cuadrado de independencia compara lo observado, $O_{jk}$, con lo que se esperaría si $H_0$ fuera cierta, $E_{jk}$:
+
+$$\chi^2=\sum_{j,k}\frac{(O_{jk}-E_{jk})^2}{E_{jk}}.$$
 
 **Predicción escrita:** ¿los estudiantes con respuestas faltantes quedan abajo con la misma frecuencia que los demás? **Mi apuesta:**
 '''),
@@ -177,9 +190,13 @@ comparacion = pd.DataFrame({
 }).rename(index={False: "fila completa", True: "con algún faltante"})
 display(comparacion)
 print(f"dropna() borraría el {incompleta.mean() * 100:.1f} % de las filas.")
+
+from scipy.stats import chi2_contingency
+ji2, valor_p, _, _ = chi2_contingency(pd.crosstab(incompleta, y))
+print(f"Prueba ji-cuadrado de independencia entre «tener faltantes» y «quedar abajo»: estadístico {ji2:.1f}, valor p {valor_p:.2g}")
 '''),
 ("md", r'''
-Los dos porcentajes de la tabla no coinciden. Quien deja preguntas sin responder queda en el cuarto más bajo con más frecuencia que quien responde todo. `dropna()` sacaría de la tabla, con preferencia, a los estudiantes que la Secretaría está buscando, y lo haría sin avisar. Eso es un **sesgo de selección** creado por la limpieza.
+El valor $p$ de la última línea dice si la diferencia entre los dos porcentajes puede ser casualidad. Los dos porcentajes de la tabla no coinciden. Quien deja preguntas sin responder queda en el cuarto más bajo con más frecuencia que quien responde todo. `dropna()` sacaría de la tabla, con preferencia, a los estudiantes que la Secretaría está buscando, y lo haría sin avisar. Eso es un **sesgo de selección** creado por la limpieza.
 
 **Decisión:** no se borra ninguna fila por faltantes. Cada faltante se reemplaza por la mediana de su variable, calculada solo con los estudiantes de entrenamiento. Además, la educación del padre trae muchos «No sabe» y «No Aplica», y eso también es información sobre el hogar.
 
@@ -280,20 +297,27 @@ hogar = ["estrato", "educacion_madre", "educacion_padre", "internet", "computado
 Z = StandardScaler().fit_transform(X[hogar].fillna(X[hogar].median()))     # mediana de todos: aquí solo se describe
 pca = PCA().fit(Z)
 explicada = pca.explained_variance_ratio_ * 100
-cargas = pd.DataFrame(pca.components_.T[:, :2], index=hogar, columns=["CP1", "CP2"])
-if cargas["CP1"].sum() < 0:
-    cargas["CP1"] = -cargas["CP1"]                                          # el signo de un componente es arbitrario
-cp1 = pd.Series(Z @ cargas["CP1"].values, index=X.index)
+signo = -1 if pca.components_[0].sum() < 0 else 1                           # el signo de un componente es arbitrario
+cargas = pd.DataFrame(pca.components_.T[:, :3], index=hogar, columns=["CP1", "CP2", "CP3"])
+puntajes = pd.DataFrame(pca.transform(Z)[:, :3], index=X.index, columns=["CP1", "CP2", "CP3"])
+cargas["CP1"], puntajes["CP1"] = signo * cargas["CP1"], signo * puntajes["CP1"]
+cp1 = puntajes["CP1"]
 
-fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(14, 3.9))
-izq.bar(range(1, 10), explicada, color="#1D4E89"); izq.axhline(100 / 9, color="gray", ls=":")
-izq.set(title="Varianza explicada por componente", xlabel="componente", ylabel="%")
-cargas["CP1"].sort_values().plot.barh(ax=centro, color="#1B998B"); centro.set(title="Cargas del primer componente")
+resumen_pca(explicada, cargas).show()
+'''),
+("code", r'''
+muestra = puntajes.sample(min(4000, len(puntajes)), random_state=0)
+nube_3d(muestra,
+        grupo=y[muestra.index].map({0: "no quedó abajo", 1: "quedó en el cuarto más bajo"}),
+        colores={"no quedó abajo": CIELO, "quedó en el cuarto más bajo": ROJO},
+        texto="puntaje global: " + datos.loc[muestra.index, "punt_global"].astype(str),
+        flechas=cargas, largo=5, tamano=2.5,
+        titulo="Los estudiantes en las tres primeras dimensiones del hogar",
+        subtitulo="Cada punto es un estudiante. Las flechas verdes son las cargas. Arrastren para girar; un clic en la leyenda apaga un grupo.",
+        ejes=[f"CP{j + 1} ({explicada[j]:.0f} %)" for j in range(3)]).show()
+
 quintil = pd.qcut(cp1, 5, labels=["1 (más bajo)", "2", "3", "4", "5 (más alto)"])
-(y.groupby(quintil, observed=True).mean() * 100).plot.bar(ax=der, color="#D7263D", rot=0)
-der.set(title="Tasa de puntaje bajo por quintil del CP1", xlabel="quintil del primer componente", ylabel="%")
-plt.tight_layout(); plt.show()
-
+display((y.groupby(quintil, observed=True).mean() * 100).round(1).rename("% en el cuarto más bajo").rename_axis("quintil del primer componente").to_frame())
 inse = datos["estu_inse_individual"]
 print(f"El primer componente explica {explicada[0]:.0f} % de la varianza; el segundo, {explicada[1]:.0f} %.")
 print(f"Correlación entre el primer componente y el INSE del ICFES: {cp1.corr(inse):.2f}")
@@ -695,6 +719,8 @@ DESDE = 2021                 # primer año que entra al análisis. La sección 2
 ("code", r'''
 crudo = descargar("dengue", ciudad=CIUDAD)
 print("Filas:", len(crudo), "| Columnas:", crudo.shape[1])
+from taller.presentacion import ficha_del_dato, RegistroDeLimpieza, resumen_pca, nube_3d, CIELO, ROJO
+display(ficha_del_dato(crudo, f"Fichas de dengue, {CIUDAD.title()}", maximo=80))
 crudo.head(3).T
 '''),
 ("md", r'''
@@ -864,6 +890,14 @@ y = limpio["hospitalizado"]
 print(f"De {antes} fichas quedan {len(limpio)}, entre {limpio['fecha'].min().date()} y {limpio['fecha'].max().date()}.")
 print(f"Hospitalizados: {y.mean() * 100:.1f} %")
 print("Faltantes que quedan (%):"); print((limpio.isna().mean() * 100).round(1)[lambda s: s > 0].to_string())
+
+registro = RegistroDeLimpieza(antes)
+n_caso = int(es_caso.sum()); n_desde = int((es_caso & (notificacion.dt.year >= DESDE)).sum())
+registro.anotar("Casos descartados y fichas de mortalidad", "salen de la tabla", antes - n_caso, n_caso)
+registro.anotar(f"Fichas anteriores a {DESDE}", "salen: antes casi ninguna trae síntomas", n_caso - n_desde, n_desde)
+registro.anotar("Consulta antes de los síntomas o más de un mes después", "salen: son errores de fecha", n_desde - len(limpio), len(limpio))
+registro.anotar("Estrato faltante o fuera de 1 a 6", "queda como faltante; la ficha se queda", int(limpio["estrato"].isna().sum()))
+display(registro.tabla())
 '''),
 ("md", r'''
 Comparen con su primera apuesta. Dos notas sobre la celda.
@@ -905,6 +939,24 @@ ejes[1, 1].set(title="% de fichas con cada síntoma", xlabel="%"); ejes[1, 1].ti
 plt.tight_layout(); plt.show()
 '''),
 ("md", r'''
+**Una prueba de hipótesis: ¿los hospitalizados consultaron más tarde?** El histograma de abajo a la izquierda compara dos grupos. La prueba de Mann-Whitney contrasta
+
+$$H_0:\ P(D_1>D_0)=\tfrac12\qquad\text{contra}\qquad H_1:\ P(D_1>D_0)\neq\tfrac12,$$
+
+donde $D_1$ son los días hasta la consulta de un hospitalizado tomado al azar y $D_0$ los de un no hospitalizado. Usa rangos, así que no supone normalidad, que aquí no hay.
+'''),
+("code", r'''
+from scipy.stats import mannwhitneyu
+
+dias_h, dias_n = dias[y.loc[dias.index] == 1], dias[y.loc[dias.index] == 0]
+estadistico, valor_p = mannwhitneyu(dias_h, dias_n)
+print(f"Mediana de días hasta la consulta | hospitalizados: {dias_h.median():.0f} | no hospitalizados: {dias_n.median():.0f}")
+print(f"Media | hospitalizados: {dias_h.mean():.2f} | no hospitalizados: {dias_n.mean():.2f}")
+print(f"P(D1 > D0) estimada: {estadistico / (len(dias_h) * len(dias_n)):.3f} | valor p: {valor_p:.2g}")
+'''),
+("md", r'''
+- Con miles de fichas, casi cualquier diferencia sale con un valor $p$ diminuto. Miren la probabilidad estimada: ¿qué tan lejos está de un medio? ¿La diferencia importa en la práctica? **Mi lectura:**
+
 Respondan en una línea cada una.
 
 - ¿El porcentaje de hospitalizados se mantiene estable en el tiempo, o cambia cuando llega la epidemia? **Mi lectura:**
@@ -928,19 +980,15 @@ from sklearn.preprocessing import StandardScaler
 Z = StandardScaler().fit_transform(limpio[SINTOMAS + ALARMA])
 pca = PCA().fit(Z)
 explicada = pca.explained_variance_ratio_ * 100
-cargas = pd.DataFrame(pca.components_.T[:, :2], index=SINTOMAS + ALARMA, columns=["CP1", "CP2"])
+cargas = pd.DataFrame(pca.components_.T[:, :3], index=SINTOMAS + ALARMA, columns=["CP1", "CP2", "CP3"])
 
-fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 4.5))
-izq.bar(range(1, 9), explicada[:8], color="#1D4E89"); izq.axhline(100 / len(cargas), color="gray", ls=":")
-izq.set(title="Varianza explicada por componente", xlabel="componente", ylabel="%")
-der.scatter(cargas.loc[SINTOMAS, "CP1"], cargas.loc[SINTOMAS, "CP2"], color="#5BC0EB", label="síntomas generales")
-der.scatter(cargas.loc[ALARMA, "CP1"], cargas.loc[ALARMA, "CP2"], color="#D7263D", label="signos de alarma")
-for nombre, (a, b) in cargas.iterrows():
-    der.text(a, b, " " + nombre, fontsize=7)
-der.axhline(0, color="gray", lw=0.5); der.axvline(0, color="gray", lw=0.5)
-der.set(title="Cada punto es un síntoma", xlabel="CP1", ylabel="CP2"); der.legend(fontsize=8)
-plt.tight_layout(); plt.show()
-print(f"Los dos primeros componentes explican {explicada[:2].sum():.0f} % de la varianza.")
+resumen_pca(explicada, cargas, "Cargas: qué mezcla de síntomas es cada componente").show()
+tipo = pd.Series(["síntomas generales"] * len(SINTOMAS) + ["signos de alarma"] * len(ALARMA), index=cargas.index)
+nube_3d(cargas, grupo=tipo, colores={"síntomas generales": CIELO, "signos de alarma": ROJO}, etiquetas=True, tamano=7,
+        titulo="Los diecisiete síntomas en tres componentes",
+        subtitulo="Cada punto es un síntoma. Dos síntomas quedan cerca si aparecen en las mismas fichas. Arrastren para girar.",
+        ejes=[f"CP{j + 1} ({explicada[j]:.0f} %)" for j in range(3)]).show()
+print(f"Los tres primeros componentes explican {explicada[:3].sum():.0f} % de la varianza.")
 '''),
 ("md", r'''
 - ¿Los síntomas generales y los signos de alarma quedan en zonas distintas de la gráfica? **Mi lectura:**
