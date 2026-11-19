@@ -868,7 +868,7 @@ print("Faltantes que quedan (%):"); print((limpio.isna().mean() * 100).round(1)[
 ("md", r'''
 Comparen con su primera apuesta. Dos notas sobre la celda.
 
-La lista `ALARMA` reúne los signos que el protocolo de dengue trata como señales de alarma. La armé con las columnas de la ficha y no pude contrastarla con el protocolo vigente del INS, así que también es una decisión de modelación.
+La lista `ALARMA` reúne los once signos que el protocolo de vigilancia de dengue del Instituto Nacional de Salud (códigos 210, 220 y 580, versión de marzo de 2022) pone en la definición de «dengue con signos de alarma»: dolor abdominal, vómito persistente, diarrea, acumulación de líquidos, sangrado de mucosas, letargo, hipotensión postural, hepatomegalia, caída de la temperatura y caída de plaquetas con aumento del hematocrito. Las columnas de la ficha siguen esa lista. El mismo protocolo define los códigos de `ajuste_` que usamos: 3 es confirmado por laboratorio, 5 es confirmado por nexo epidemiológico y 6 es descartado. Lo que sigue siendo una deducción mía es el significado de los códigos de `conducta`, porque el protocolo no los describe.
 
 La penúltima regla quita las fichas en que la consulta aparece antes de los síntomas o más de un mes después. Son errores de fecha, y son pocas.
 
@@ -1070,6 +1070,11 @@ print(f"Captación en prueba: {resumen[mejor]:.3f} | regla de los signos de alar
 '''),
 ("md", r'''
 Comparen con su tercera apuesta. La distancia entre el ganador y la regla es lo que el modelo agrega a lo que el protocolo ya sabía. Escriban en una línea si esa distancia justifica cambiar la regla por un modelo: **Mi lectura:**
+
+**Por qué quedan tan cerca.** La respuesta que modelamos es una decisión del médico, y la guía de atención le indica hospitalizar a quien tiene signos de alarma. El modelo aprende, en buena parte, la regla que produjo el dato. Dos preguntas para cerrar:
+
+- Si el modelo imita al protocolo, ¿puede este cuaderno decir si el protocolo se equivoca? **Mi respuesta:**
+- ¿Qué habría que medir para saberlo, y está ese dato en la ficha? **Mi respuesta:**
 
 ### 3.4 La trampa de la clase: columnas que filtran la respuesta
 

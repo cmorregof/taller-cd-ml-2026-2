@@ -295,6 +295,30 @@ todos[["validación", "pérdida logarítmica"]].rename(columns={"pérdida logar�
 plt.xlabel("pérdida logarítmica (menos es mejor)"); plt.title("Siete candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
 display(todos.sort_values("validación").round(4))
 '''),
+("md", r'''
+### Una confesión sobre los 150 vecinos
+
+El número de vecinos de la celda anterior no salió de la validación. En la preparación de esta clase el primer intento fue con 75, y pasó lo que muestra la celda siguiente. Lo dejo a la vista porque es la lección más fina del día.
+'''),
+("code", r'''
+vecinos_75 = make_pipeline(SimpleImputer(strategy="median"), StandardScaler(), KNeighborsClassifier(n_neighbors=75))
+vecinos_75.fit(X[E], y[E])
+validacion_75 = puntuar(y[V], vecinos_75.predict_proba(X[V])[:, 1])["pérdida logarítmica"]
+vecinos_75.fit(X[E | V], y[E | V])
+p_75 = vecinos_75.predict_proba(X[P])[:, 1]
+prueba_75 = puntuar(y[P], p_75)["pérdida logarítmica"]
+
+print(f"k vecinos con 75  | validación: {validacion_75:.4f} | prueba: {prueba_75:.4f}")
+print(f"k vecinos con 150 | validación: {todos.loc['k vecinos', 'validación']:.4f} | prueba: {todos.loc['k vecinos', 'pérdida logarítmica']:.4f}")
+print(f"Mejor de los siete en validación: {todos['validación'].min():.4f} ({todos['validación'].idxmin()})")
+goles = np.asarray(y[P]) == 1
+print(f"Goles de la prueba a los que el modelo de 75 les dio probabilidad cero: {int((p_75[goles] == 0).sum())} de {int(goles.sum())}")
+'''),
+("md", r'''
+Lean los cuatro renglones juntos. Con 75 vecinos el modelo puede quedar muy bien en validación y caer en la prueba. La causa está en el último renglón: basta un remate que terminó en gol y recibió probabilidad cero, porque ninguno de sus 75 vecinos había sido gol. La pérdida logarítmica castiga ese error más que cualquier otro, ya que $-\log\hat p$ crece sin límite cuando $\hat p$ se acerca a cero y el evento ocurre.
+
+Subir a 150 vecinos corrige el síntoma, pero la decisión se tomó después de mirar la prueba, y eso es justo lo que el protocolo prohíbe. Por eso va a la bitácora como lo que fue. La enseñanza es doble. Con un evento raro, ganar la validación no garantiza nada. Y un modelo que puede decir «imposible» es peligroso cuando su salida se va a usar como probabilidad.
+'''),
 ("code", r'''
 mejor = todos["validación"].idxmin()
 elegido = mejor if todos.loc[mejor, "pérdida logarítmica"] < todos.loc["solo distancia", "pérdida logarítmica"] else "solo distancia"
@@ -465,7 +489,7 @@ Escríbanla para un director deportivo que sabe de fútbol y no sabe qué es una
 | Distancia y ángulo en vez de $x$ e $y$ | Coordenadas crudas | La geometría del remate es lo que importa |
 | Partición por partido y por fecha | Por remate, al azar | Los remates de un partido comparten rival y arquero |
 | Pérdida logarítmica para escoger | Exactitud | Con 11 % de goles la exactitud premia decir siempre que no |
-| 150 vecinos y hojas grandes | Valores por defecto | Un vecindario sin goles da probabilidad cero |
+| 150 vecinos y hojas grandes | Valores por defecto; 75 vecinos | Un vecindario sin goles da probabilidad cero. El 150 se fijó después de ver caer al de 75 en la prueba, y esa es una falta contra el protocolo que queda registrada |
 | No balancear las clases | `class_weight="balanced"` | Infla las probabilidades y la suma deja de ser un número de goles |
 | Predicciones fuera de muestra para juzgar jugadores | Las del modelo final | Un modelo no debe calificar los remates con que se entrenó |
 | Franja por simulación | Comparar goles con xG a ojo | Con pocos remates la suerte pesa mucho |
