@@ -54,7 +54,7 @@ Para el aviso contamos aciertos y falsas alarmas, y eso se define en la sección
 
 Antes de ver un solo dato, escriban aquí su apuesta.
 
-- ¿Cuántos kWh consume al día un hogar de Londres? Un hogar colombiano de estrato medio consume cerca de 5. **Mi apuesta:**
+- ¿Cuántos kWh consume al día un hogar de Londres? **Mi apuesta:**
 - Si una tabla de un millón de filas ocupa 50 MB en disco, ¿cuánta memoria ocupa al abrirla con pandas sin decirle nada? **Mi apuesta:**
 - ¿Qué tan lejos queda el consumo de mañana del de hoy, en porcentaje? **Mi apuesta:**
 '''),
