@@ -225,13 +225,19 @@ El análisis de componentes principales busca las direcciones en que más varía
 
 $$R=\frac{1}{T-1}Z^\top Z=V\Lambda V^\top,\qquad \Lambda=\operatorname{diag}(\lambda_1\ge\dots\ge\lambda_5).$$
 
-Las columnas de $V$ son los componentes, $\lambda_j/\sum_k\lambda_k$ es la fracción de la varianza que explica el componente $j$, y las nuevas coordenadas de cada mes son los **puntajes** $ZV$. Con los dos primeros puntajes se dibuja cada mes en un plano.
+Las columnas de $V$ son los componentes, $\lambda_j/\sum_k\lambda_k$ es la fracción de la varianza que explica el componente $j$, y las nuevas coordenadas de cada mes son los **puntajes** $ZV$. Con los tres primeros puntajes se dibuja cada mes como un punto en el espacio.
 
-**Predicción escrita:** si dibujo los 144 meses en ese plano y los coloreo por año, ¿qué figura esperan ver? **Mi apuesta:**
+**Predicción escrita:** si dibujo los 144 meses en ese espacio y los coloreo por año, ¿qué figura esperan ver? **Mi apuesta:**
 '''),
 ("code", r'''
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+AZUL, ROJO, VERDE, MORADO, CIELO, ROSA, GRIS = PALETA
+FUENTE = dict(family="Inter, Helvetica, Arial, sans-serif", size=13, color="#1F2937")
+MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
 
 Z = StandardScaler().fit_transform(np.log(precios))
 pca = PCA().fit(Z)
@@ -239,22 +245,45 @@ puntajes = pca.transform(Z)
 explicada = pca.explained_variance_ratio_ * 100
 cargas = pd.DataFrame(pca.components_.T, index=precios.columns, columns=[f"CP{j + 1}" for j in range(5)])
 
-fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(15, 4.3), gridspec_kw={"width_ratios": [1, 1.5, 1.3]})
-izq.bar(cargas.columns, explicada, color="#1D4E89")
-izq.set(title="Varianza explicada", ylabel="%")
-centro.plot(puntajes[:, 0], puntajes[:, 1], color="gray", lw=0.5)
-puntos = centro.scatter(puntajes[:, 0], puntajes[:, 1], c=precios.index.year, cmap="viridis", s=28)
-plt.colorbar(puntos, ax=centro, label="año")
-centro.set(title="Cada punto es un mes", xlabel=f"CP1 ({explicada[0]:.0f} %)", ylabel=f"CP2 ({explicada[1]:.0f} %)")
-cargas[["CP1", "CP2"]].plot.barh(ax=der, color=["#1D4E89", "#D7263D"])
-der.set(title="Cargas: qué mezcla de ingredientes es cada componente"); der.tick_params(axis="y", labelsize=7)
-plt.tight_layout(); plt.show()
-print("Varianza explicada (%):", explicada.round(1))
+resumen_pca = make_subplots(rows=1, cols=2, column_widths=[0.38, 0.62], horizontal_spacing=0.22,
+                            subplot_titles=("Varianza explicada por componente", "Cargas: qué mezcla de ingredientes es cada componente"))
+resumen_pca.add_trace(go.Bar(x=list(cargas.columns), y=explicada, marker_color=AZUL, text=[f"{v:.0f} %" for v in explicada],
+                             textposition="outside", hovertemplate="%{x}: %{y:.1f} %<extra></extra>"), row=1, col=1)
+resumen_pca.add_trace(go.Heatmap(z=cargas[["CP1", "CP2", "CP3"]].values, x=["CP1", "CP2", "CP3"], y=list(cargas.index), zmid=0,
+                                 colorscale=[[0, ROJO], [0.5, "#FFFFFF"], [1, AZUL]], text=cargas[["CP1", "CP2", "CP3"]].round(2).values,
+                                 texttemplate="%{text}", colorbar=dict(thickness=12, len=0.8), hovertemplate="%{y}<br>%{x}: %{z:.2f}<extra></extra>"), row=1, col=2)
+resumen_pca.update_yaxes(title_text="%", range=[0, 85], row=1, col=1)
+resumen_pca.update_layout(template="plotly_white", height=340, font=FUENTE, showlegend=False, margin=dict(l=10, r=10, t=50, b=10))
+resumen_pca.show()
+'''),
+("code", r'''
+anio_decimal = precios.index.year + (precios.index.month - 1) / 12
+etiquetas = [f"<b>{MESES[fecha.month - 1]} de {fecha.year}</b><br>olla: ${costo:,.0f}" for fecha, costo in zip(precios.index, olla)]
+
+camino = go.Figure()
+camino.add_trace(go.Scatter3d(
+    x=puntajes[:, 0], y=puntajes[:, 1], z=puntajes[:, 2], mode="lines+markers",
+    line=dict(color="rgba(120, 130, 145, 0.55)", width=3),
+    marker=dict(size=5, color=anio_decimal, colorscale=[[0, CIELO], [0.45, AZUL], [0.75, MORADO], [1, ROJO]],
+                colorbar=dict(title="año", thickness=14, len=0.6, tickformat="d"), line=dict(color="white", width=0.5)),
+    text=etiquetas, hovertemplate="%{text}<extra></extra>"))
+largo = 3.2                                           # las flechas de las cargas se alargan para que se vean junto a los puntos
+for ingrediente in cargas.index:
+    v = cargas.loc[ingrediente, ["CP1", "CP2", "CP3"]].values * largo
+    camino.add_trace(go.Scatter3d(x=[0, v[0]], y=[0, v[1]], z=[0, v[2]], mode="lines+text", line=dict(color=VERDE, width=6),
+                                  text=["", ingrediente.split(",")[-1].strip()], textposition="top center",
+                                  textfont=dict(size=11, color=VERDE), hoverinfo="skip"))
+camino.update_layout(
+    template="plotly_white", height=640, font=FUENTE, showlegend=False, margin=dict(l=0, r=0, t=60, b=0),
+    title=dict(text="<b>Doce años de la olla en tres componentes</b><br><sup>Cada punto es un mes. Arrastren para girar, rueda para acercar, pasen el ratón por un punto.</sup>"),
+    scene=dict(xaxis_title=f"CP1 ({explicada[0]:.0f} %)", yaxis_title=f"CP2 ({explicada[1]:.0f} %)", zaxis_title=f"CP3 ({explicada[2]:.0f} %)",
+               camera=dict(eye=dict(x=1.5, y=-1.6, z=0.9))))
+camino.show()
 '''),
 ("md", r'''
-Lean las tres gráficas de izquierda a derecha. El primer componente explica la mayor parte, y sus cargas tienen todas el mismo signo: es el nivel general de precios, lo que uno llamaría inflación de la olla. En el plano, los meses forman un camino que avanza de izquierda a derecha con los años, y hay un tramo donde los puntos se separan de golpe. Búsquenlo y digan en qué año cae.
+Giren la figura antes de leer. El primer componente explica la mayor parte, y en el mapa de cargas sus cinco números tienen el mismo signo: es el nivel general de precios, lo que uno llamaría la inflación de la olla. Por eso los meses forman un camino que avanza con los años a lo largo de ese eje. Hay un tramo donde los puntos se separan de golpe. Búsquenlo con el ratón y digan en qué meses cae.
 
-El segundo componente tiene cargas de signos opuestos. Opone unos ingredientes a otros, así que recoge los meses en que la olla cambia de composición sin cambiar de precio.
+El segundo componente tiene cargas de signos opuestos. Opone unos ingredientes a otros, así que recoge los meses en que la olla cambia de composición sin cambiar de precio. Las flechas verdes son las cargas: un mes que queda lejos en la dirección de una flecha es un mes en que ese ingrediente estaba caro frente a su propia historia.
 
 ### 2.4 PCA, segunda mirada: cada punto es un producto
 
@@ -287,39 +316,40 @@ Zp = StandardScaler().fit_transform(variaciones)            # una columna por pr
 pca_productos = PCA(n_components=3).fit(Zp.T)               # al trasponer, cada producto es una fila
 nube = pd.DataFrame(pca_productos.transform(Zp.T), index=frecuentes.columns, columns=["CP1", "CP2", "CP3"])
 nube["familia"] = [familia(p) for p in nube.index]
-
-colores = {"carne de res": "#D7263D", "carne de cerdo": "#F49097", "huevos": "#6C4AB6", "frutas": "#1B998B",
-           "verduras y hortalizas": "#8BC34A", "tubérculos y plátanos": "#1D4E89", "abarrotes y otros": "#9AA5B1"}
-fig, eje = plt.subplots(figsize=(10, 6.5))
-for nombre, grupo in nube.groupby("familia"):
-    eje.scatter(grupo["CP1"], grupo["CP2"], s=45, color=colores[nombre], label=f"{nombre} ({len(grupo)})", alpha=0.85)
-for ingrediente in receta:
-    x, y = nube.loc[ingrediente, ["CP1", "CP2"]]
-    eje.scatter(x, y, s=190, facecolor="none", edgecolor="black", lw=1.6)
-    eje.annotate(ingrediente, (x, y), xytext=(8, 8), textcoords="offset points", fontsize=8, weight="bold")
 var_p = pca_productos.explained_variance_ratio_ * 100
-eje.set(title=f"Cada punto es un producto de la Galería ({len(nube)} productos)", xlabel=f"CP1 ({var_p[0]:.0f} %)", ylabel=f"CP2 ({var_p[1]:.0f} %)")
-eje.legend(fontsize=8, loc="lower left"); plt.show()
-print("Varianza explicada por los tres primeros componentes (%):", var_p.round(1))
-'''),
-("md", r'''
-Nadie le dijo al PCA qué es carne y qué es fruta, y aun así las familias aparecen. Las carnes de res quedan juntas en una esquina, las de cerdo a su lado y los huevos en otra. Las frutas y las verduras se riegan por la parte baja. Los cinco ingredientes del sancocho, marcados con un círculo, caen en zonas distintas. Esa es la versión geométrica de lo que dijo la matriz de correlaciones: cada ingrediente tiene su propia historia, y por eso la olla promedia riesgos en lugar de sumarlos.
-
-Dos advertencias. Los dos primeros componentes explican poca varianza, así que el plano es una sombra de una nube que vive en muchas dimensiones. Y la cercanía en el plano dice que dos productos se mueven parecido, sin decir por qué.
-
-La celda siguiente dibuja la misma nube con el tercer componente. La gráfica se puede girar con el ratón.
+print(f"{len(nube)} productos | varianza explicada por los tres primeros componentes (%):", var_p.round(1))
+print(nube["familia"].value_counts().to_string())
 '''),
 ("code", r'''
-try:
-    import plotly.express as px
-    figura = px.scatter_3d(nube.reset_index(), x="CP1", y="CP2", z="CP3", color="familia", hover_name="producto",
-                           color_discrete_map=colores, opacity=0.85, height=560, title="Los productos de la Galería en tres componentes")
-    figura.update_traces(marker_size=4); figura.show()
-except ImportError:
-    eje = plt.figure(figsize=(8, 6)).add_subplot(projection="3d")
-    eje.scatter(nube["CP1"], nube["CP2"], nube["CP3"], c=nube["familia"].map(colores)); plt.show()
+colores = {"carne de res": ROJO, "carne de cerdo": ROSA, "huevos": MORADO, "frutas": VERDE,
+           "verduras y hortalizas": "#8BC34A", "tubérculos y plátanos": AZUL, "abarrotes y otros": GRIS}
+
+galeria = go.Figure()
+for nombre in colores:
+    grupo = nube[nube["familia"] == nombre]
+    galeria.add_trace(go.Scatter3d(
+        x=grupo["CP1"], y=grupo["CP2"], z=grupo["CP3"], mode="markers", name=f"{nombre} ({len(grupo)})",
+        marker=dict(size=6, color=colores[nombre], opacity=0.92, line=dict(color="white", width=0.6)),
+        text=grupo.index, hovertemplate="<b>%{text}</b><extra>" + nombre + "</extra>"))
+sancocho = nube.loc[list(receta)]
+galeria.add_trace(go.Scatter3d(
+    x=sancocho["CP1"], y=sancocho["CP2"], z=sancocho["CP3"], mode="markers+text", name="ingredientes del sancocho",
+    marker=dict(size=11, symbol="diamond-open", color="#111827", line=dict(color="#111827", width=3)),
+    text=[p.split(",")[-1].strip() for p in sancocho.index], textposition="top center", textfont=dict(size=12, color="#111827"),
+    hovertemplate="<b>%{text}</b><extra>sancocho</extra>"))
+galeria.update_layout(
+    template="plotly_white", height=680, font=FUENTE, margin=dict(l=0, r=0, t=60, b=0),
+    title=dict(text=f"<b>Los {len(nube)} productos de la Galería en tres componentes</b><br><sup>Cada punto es un producto. Un clic en la leyenda apaga una familia; dos clics la dejan sola.</sup>"),
+    legend=dict(title="familia", itemsizing="constant", bgcolor="rgba(255,255,255,0.85)", x=0.01, y=0.98),
+    scene=dict(xaxis_title=f"CP1 ({var_p[0]:.0f} %)", yaxis_title=f"CP2 ({var_p[1]:.0f} %)", zaxis_title=f"CP3 ({var_p[2]:.0f} %)",
+               camera=dict(eye=dict(x=1.6, y=1.5, z=0.8))))
+galeria.show()
 '''),
 ("md", r'''
+Nadie le dijo al PCA qué es carne y qué es fruta, y aun así las familias aparecen. Giren la nube hasta que las carnes de res queden juntas en un extremo, con las de cerdo a su lado, y busquen los huevos. Apaguen familias en la leyenda para ver cada una sola. Los cinco ingredientes del sancocho, marcados con un rombo, caen en zonas distintas. Esa es la versión geométrica de lo que dijo la matriz de correlaciones: cada ingrediente tiene su propia historia, y por eso la olla promedia riesgos en lugar de sumarlos.
+
+Dos advertencias. Los tres primeros componentes explican poca varianza, así que esta nube es una sombra de otra que vive en muchas dimensiones. Y la cercanía dice que dos productos se mueven parecido, sin decir por qué.
+
 El PCA aquí sirve para describir. No lo vamos a usar como entrada del modelo.
 '''),
 ("md", r'''
@@ -701,10 +731,9 @@ else:
         ultima_rel["mes_sen"] = np.sin(2 * np.pi * hoy.month / 12); ultima_rel["mes_cos"] = np.cos(2 * np.pi * hoy.month / 12)
         punto = float(modelo.fit(relativas, razon).predict(ultima_rel)[0]) * olla.iloc[-1]
 
-meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
 destino_mes = hoy + pd.DateOffset(months=H)
 print(f"Método elegido: {elegido} (MAPE en prueba {resumen[elegido]} %)")
-print(f"Pronóstico para {meses[destino_mes.month - 1]} de {destino_mes.year}: ${punto:,.0f}")
+print(f"Pronóstico para {MESES[destino_mes.month - 1]} de {destino_mes.year}: ${punto:,.0f}")
 print(f"En 9 de cada 10 meses de prueba, el costo real no superó al pronóstico en más de {margen * 100:.1f} %")
 print(f"Costo para presupuestar: ${punto * (1 + margen):,.0f}")
 '''),
