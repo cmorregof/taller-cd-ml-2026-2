@@ -94,10 +94,10 @@ hora_utc = focos["acq_time"].astype(int) // 100
 print("Focos cuya fecha en Colombia es el día anterior a la fecha del archivo (%):", round(float((hora_utc < 5).mean() * 100), 1))
 
 fig, ejes = plt.subplots(1, 4, figsize=(16, 3.8))
-vegetacion.groupby(vegetacion["fecha"].dt.year).size().plot.bar(ax=ejes[0], color="#16302B", rot=45); ejes[0].set(title="Focos por año", xlabel="")
-vegetacion.groupby(vegetacion["fecha"].dt.month).size().plot.bar(ax=ejes[1], color="#A8432C", rot=0); ejes[1].set(title="Focos por mes (2016 a 2025)", xlabel="mes")
-vegetacion["departamento"].value_counts().head(10).sort_values().plot.barh(ax=ejes[2], color="#E0A526"); ejes[2].set(title="Diez departamentos con más focos", ylabel="")
-ejes[3].scatter(vegetacion["longitude"][::10], vegetacion["latitude"][::10], s=0.3, color="#A8432C", alpha=0.4); ejes[3].set(title="Uno de cada diez focos", xlabel="longitud", ylabel="latitud")
+vegetacion.groupby(vegetacion["fecha"].dt.year).size().plot.bar(ax=ejes[0], color="#1D4E89", rot=45); ejes[0].set(title="Focos por año", xlabel="")
+vegetacion.groupby(vegetacion["fecha"].dt.month).size().plot.bar(ax=ejes[1], color="#D7263D", rot=0); ejes[1].set(title="Focos por mes (2016 a 2025)", xlabel="mes")
+vegetacion["departamento"].value_counts().head(10).sort_values().plot.barh(ax=ejes[2], color="#1B998B"); ejes[2].set(title="Diez departamentos con más focos", ylabel="")
+ejes[3].scatter(vegetacion["longitude"][::10], vegetacion["latitude"][::10], s=0.3, color="#D7263D", alpha=0.4); ejes[3].set(title="Uno de cada diez focos", xlabel="longitud", ylabel="latitud")
 plt.tight_layout(); plt.show()
 
 por_mes = vegetacion.groupby(vegetacion["fecha"].dt.month).size()
@@ -124,12 +124,12 @@ pca = PCA(n_components=2).fit(perfil)
 Z = pca.transform(perfil)
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 4.2))
-izq.scatter(Z[:, 0], Z[:, 1], color="#16302B")
+izq.scatter(Z[:, 0], Z[:, 1], color="#1D4E89")
 for nombre, (a, b) in zip(perfil.index, Z):
     izq.text(a + 0.005, b, nombre, fontsize=7)
 izq.set(title="Departamentos según su perfil estacional", xlabel="CP1", ylabel="CP2")
 extremos = [perfil.index[Z[:, 0].argmin()], perfil.index[Z[:, 0].argmax()], perfil.index[Z[:, 1].argmax()]]
-for nombre, color in zip(extremos, ["#A8432C", "#16302B", "#E0A526"]):
+for nombre, color in zip(extremos, ["#D7263D", "#1D4E89", "#1B998B"]):
     der.plot(range(1, 13), perfil.loc[nombre] * 100, marker="o", color=color, label=nombre)
 der.set(title="Perfil de tres departamentos extremos", xlabel="mes", ylabel="% de sus focos"); der.legend(fontsize=8)
 plt.tight_layout(); plt.show()
@@ -227,7 +227,7 @@ comparacion = pd.DataFrame({nombre: {"validación": cobertura(p, V).mean(), "pru
 display((comparacion[["validación", "prueba"]] * 100).round(1).join(comparacion["error absoluto medio (validación)"].round(1)))
 print(f"Techo (quien conoce el futuro): {techo['validación'] * 100:.1f} % en validación | {techo['prueba'] * 100:.1f} % en prueba")
 
-ax = (comparacion[["validación", "prueba"]] * 100).sort_values("validación").plot.barh(color=["#16302B", "#E0A526"], figsize=(9, 3.8))
+ax = (comparacion[["validación", "prueba"]] * 100).sort_values("validación").plot.barh(color=["#1D4E89", "#1B998B"], figsize=(9, 3.8))
 ax.axvline(techo["validación"] * 100, color="gray", ls=":"); ax.set(title=f"Cobertura con {N_BRIGADAS} brigadas (línea punteada: techo en validación)", xlabel="% de los focos de la semana")
 plt.show()
 
@@ -277,7 +277,7 @@ print(f"Estacional: usar años futuros la cambia en {trampa.iloc[3, 0] - trampa.
 ("code", r'''
 poisson = modelos["regresión de Poisson"]
 coeficientes = pd.Series(poisson[-1].coef_, index=entradas).sort_values()
-coeficientes.plot.barh(color="#16302B", figsize=(8, 3))
+coeficientes.plot.barh(color="#1D4E89", figsize=(8, 3))
 plt.title("Regresión de Poisson: coeficientes sobre entradas estandarizadas"); plt.xlabel("efecto sobre el logaritmo de los focos esperados"); plt.show()
 print(coeficientes.round(3).to_dict())
 
@@ -316,7 +316,7 @@ resumen = pd.DataFrame({"media": en_prueba.mean(), "percentil 10": en_prueba.qua
 display((resumen * 100).round(1))
 
 plt.figure(figsize=(11, 3.2))
-plt.plot(en_prueba.index, en_prueba[elegido].values * 100, color="#A8432C", label=elegido)
+plt.plot(en_prueba.index, en_prueba[elegido].values * 100, color="#D7263D", label=elegido)
 plt.plot(cobertura(Y, P_).index, cobertura(Y, P_).values * 100, color="gray", ls=":", label="techo")
 plt.title("Cobertura semanal en la prueba"); plt.ylabel("% de los focos"); plt.legend(); plt.show()
 

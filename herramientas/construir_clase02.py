@@ -167,7 +167,7 @@ $$P(y=1\mid m=1)=P(y=1\mid m=0).$$
 '''),
 ("code", r'''
 faltantes = (X.isna().mean() * 100).sort_values()
-faltantes[faltantes > 0].plot.barh(color="#16302B", figsize=(8, 3.6))
+faltantes[faltantes > 0].plot.barh(color="#1D4E89", figsize=(8, 3.6))
 plt.xlabel("% de estudiantes sin dato"); plt.title("Faltantes por variable"); plt.show()
 
 incompleta = X.isna().any(axis=1)
@@ -206,12 +206,12 @@ El error estándar importa porque algunos grupos son pequeños. Una tasa calcula
 ("code", r'''
 corte = datos.loc[y == 1, "punt_global"].max()
 fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 3.8))
-izq.hist(datos["punt_global"], bins=60, color="#16302B")
-izq.axvline(corte, color="#A8432C", lw=2); izq.text(corte - 8, izq.get_ylim()[1] * 0.85, f"percentil 25 nacional\n({corte} puntos)", color="#A8432C", fontsize=9, ha="right")
+izq.hist(datos["punt_global"], bins=60, color="#1D4E89")
+izq.axvline(corte, color="#D7263D", lw=2); izq.text(corte - 8, izq.get_ylim()[1] * 0.85, f"percentil 25 nacional\n({corte} puntos)", color="#D7263D", fontsize=9, ha="right")
 izq.set(title=f"Puntaje global, {DEPARTAMENTO.title()}", xlabel="puntos (0 a 500)", ylabel="estudiantes")
 
 colegios = pd.DataFrame({"n": y.groupby(colegio).size(), "tasa": y.groupby(colegio).mean() * 100})
-der.scatter(colegios["n"], colegios["tasa"], s=14, color="#3E7CB1", alpha=0.7)
+der.scatter(colegios["n"], colegios["tasa"], s=14, color="#5BC0EB", alpha=0.7)
 der.axhline(y.mean() * 100, color="gray", ls=":")
 der.set(title="Cada punto es un colegio", xlabel="estudiantes que presentaron", ylabel="% en el cuarto más bajo")
 plt.tight_layout(); plt.show()
@@ -236,7 +236,7 @@ paneles = [
 fig, ejes = plt.subplots(2, 2, figsize=(13, 8))
 for eje, (titulo, tabla) in zip(ejes.ravel(), paneles):
     tabla = tabla.dropna()
-    eje.barh([f"{nombre[:34]} (n={int(n)})" for nombre, n in zip(tabla.index, tabla["n"])], tabla["tasa"], xerr=2 * tabla["ee"], color="#E0A526", ecolor="#16302B")
+    eje.barh([f"{nombre[:34]} (n={int(n)})" for nombre, n in zip(tabla.index, tabla["n"])], tabla["tasa"], xerr=2 * tabla["ee"], color="#1B998B", ecolor="#1D4E89")
     eje.axvline(y.mean() * 100, color="gray", ls=":"); eje.invert_yaxis(); eje.tick_params(axis="y", labelsize=8)
     eje.set(title=titulo, xlabel="% en el cuarto más bajo")
 plt.tight_layout(); plt.show()
@@ -286,11 +286,11 @@ if cargas["CP1"].sum() < 0:
 cp1 = pd.Series(Z @ cargas["CP1"].values, index=X.index)
 
 fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(14, 3.9))
-izq.bar(range(1, 10), explicada, color="#16302B"); izq.axhline(100 / 9, color="gray", ls=":")
+izq.bar(range(1, 10), explicada, color="#1D4E89"); izq.axhline(100 / 9, color="gray", ls=":")
 izq.set(title="Varianza explicada por componente", xlabel="componente", ylabel="%")
-cargas["CP1"].sort_values().plot.barh(ax=centro, color="#E0A526"); centro.set(title="Cargas del primer componente")
+cargas["CP1"].sort_values().plot.barh(ax=centro, color="#1B998B"); centro.set(title="Cargas del primer componente")
 quintil = pd.qcut(cp1, 5, labels=["1 (más bajo)", "2", "3", "4", "5 (más alto)"])
-(y.groupby(quintil, observed=True).mean() * 100).plot.bar(ax=der, color="#A8432C", rot=0)
+(y.groupby(quintil, observed=True).mean() * 100).plot.bar(ax=der, color="#D7263D", rot=0)
 der.set(title="Tasa de puntaje bajo por quintil del CP1", xlabel="quintil del primer componente", ylabel="%")
 plt.tight_layout(); plt.show()
 
@@ -423,7 +423,7 @@ for nombre, modelo in cinco_modelos().items():
                        "AUC en prueba": roc_auc_score(y[P], puntajes[nombre])}
 todos = pd.DataFrame(errores).T
 
-todos[["captación en validación", "captación en prueba"]].sort_values("captación en validación").plot.barh(figsize=(9, 4), color=["#16302B", "#E0A526"])
+todos[["captación en validación", "captación en prueba"]].sort_values("captación en validación").plot.barh(figsize=(9, 4), color=["#1D4E89", "#1B998B"])
 plt.axvline(CUPO, color="gray", ls=":"); plt.xlabel("captación"); plt.title("Siete candidatos: validación para escoger, prueba para reportar"); plt.show()
 display(todos.sort_values("captación en validación", ascending=False).round(3))
 '''),
@@ -431,9 +431,9 @@ display(todos.sort_values("captación en validación", ascending=False).round(3)
 fracciones = np.linspace(0.02, 1, 50)
 plt.figure(figsize=(8, 4.2))
 for nombre, puntaje in puntajes.items():
-    estilo = {"color": "gray", "ls": ":"} if nombre == "sorteo" else {"color": "#E0A526", "lw": 2} if nombre.startswith("regla") else {"lw": 1.2}
+    estilo = {"color": "gray", "ls": ":"} if nombre == "sorteo" else {"color": "#1B998B", "lw": 2} if nombre.startswith("regla") else {"lw": 1.2}
     plt.plot(fracciones * 100, [captacion(y[P], puntaje, f) for f in fracciones], label=nombre, **estilo)
-plt.axvline(CUPO * 100, color="#A8432C", lw=1); plt.text(CUPO * 100 + 1, 0.05, "cupo", color="#A8432C")
+plt.axvline(CUPO * 100, color="#D7263D", lw=1); plt.text(CUPO * 100 + 1, 0.05, "cupo", color="#D7263D")
 plt.xlabel("% de estudiantes con cupo"); plt.ylabel("captación"); plt.title("Captación según el tamaño del programa, en la prueba"); plt.legend(fontsize=8); plt.show()
 '''),
 ("md", r'''
@@ -497,7 +497,7 @@ Un valor de 1,3 dice que la razón entre quedar abajo y no quedar abajo sube 30 
 ("code", r'''
 logistica = cinco_modelos()["logística"].fit(X[E | V], y[E | V])
 razones = pd.Series(np.exp(logistica[-1].coef_[0]), index=variables).sort_values()
-razones.plot.barh(figsize=(8, 5.5), color=["#3E7CB1" if r < 1 else "#A8432C" for r in razones])
+razones.plot.barh(figsize=(8, 5.5), color=["#5BC0EB" if r < 1 else "#D7263D" for r in razones])
 plt.axvline(1, color="gray"); plt.xlabel("razón de probabilidades por desviación estándar"); plt.title("Qué acompaña a quedar en el cuarto más bajo"); plt.show()
 print(razones.round(2).to_string())
 '''),
@@ -884,23 +884,23 @@ semana = limpio["fecha"].dt.to_period("W").dt.start_time
 fig, ejes = plt.subplots(2, 2, figsize=(13, 7.5))
 
 por_semana = y.groupby(semana).agg(["size", "mean"])
-ejes[0, 0].bar(por_semana.index, por_semana["size"], width=6, color="#16302B")
+ejes[0, 0].bar(por_semana.index, por_semana["size"], width=6, color="#1D4E89")
 ejes[0, 0].set(title=f"Casos notificados por semana, {CIUDAD.title()}", ylabel="casos")
-otro = ejes[0, 0].twinx(); otro.plot(por_semana.index, por_semana["mean"].rolling(8, min_periods=4).mean() * 100, color="#A8432C")
-otro.set_ylabel("% hospitalizado (promedio de 8 semanas)", color="#A8432C"); otro.spines["right"].set_visible(True)
+otro = ejes[0, 0].twinx(); otro.plot(por_semana.index, por_semana["mean"].rolling(8, min_periods=4).mean() * 100, color="#D7263D")
+otro.set_ylabel("% hospitalizado (promedio de 8 semanas)", color="#D7263D"); otro.spines["right"].set_visible(True)
 
 por_edad = y.groupby(limpio["curso_de_vida"]).agg(["size", "mean"])
 error = np.sqrt(por_edad["mean"] * (1 - por_edad["mean"]) / por_edad["size"])
-ejes[0, 1].bar([nombres_edad[int(i)] for i in por_edad.index], por_edad["mean"] * 100, yerr=2 * error * 100, color="#E0A526", ecolor="#16302B")
+ejes[0, 1].bar([nombres_edad[int(i)] for i in por_edad.index], por_edad["mean"] * 100, yerr=2 * error * 100, color="#1B998B", ecolor="#1D4E89")
 ejes[0, 1].set(title="Hospitalización por curso de vida", ylabel="%"); ejes[0, 1].tick_params(axis="x", rotation=20)
 
 dias = limpio["dias_hasta_consulta"].dropna()
-ejes[1, 0].hist([dias[y == 0], dias[y == 1]], bins=range(0, 16), density=True, color=["#3E7CB1", "#A8432C"], label=["no hospitalizado", "hospitalizado"])
+ejes[1, 0].hist([dias[y == 0], dias[y == 1]], bins=range(0, 16), density=True, color=["#5BC0EB", "#D7263D"], label=["no hospitalizado", "hospitalizado"])
 ejes[1, 0].set(title="Días entre el inicio de síntomas y la consulta", xlabel="días"); ejes[1, 0].legend()
 
 frecuencia = limpio.groupby("hospitalizado")[SINTOMAS + ALARMA].«mean»().T * 100          # HUECO 8: la operación que convierte ceros y unos en una fracción
 frecuencia.columns = ["no hospitalizado", "hospitalizado"]
-frecuencia.sort_values("hospitalizado").plot.barh(ax=ejes[1, 1], color=["#3E7CB1", "#A8432C"])
+frecuencia.sort_values("hospitalizado").plot.barh(ax=ejes[1, 1], color=["#5BC0EB", "#D7263D"])
 ejes[1, 1].set(title="% de fichas con cada síntoma", xlabel="%"); ejes[1, 1].tick_params(axis="y", labelsize=8)
 plt.tight_layout(); plt.show()
 '''),
@@ -931,10 +931,10 @@ explicada = pca.explained_variance_ratio_ * 100
 cargas = pd.DataFrame(pca.components_.T[:, :2], index=SINTOMAS + ALARMA, columns=["CP1", "CP2"])
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 4.5))
-izq.bar(range(1, 9), explicada[:8], color="#16302B"); izq.axhline(100 / len(cargas), color="gray", ls=":")
+izq.bar(range(1, 9), explicada[:8], color="#1D4E89"); izq.axhline(100 / len(cargas), color="gray", ls=":")
 izq.set(title="Varianza explicada por componente", xlabel="componente", ylabel="%")
-der.scatter(cargas.loc[SINTOMAS, "CP1"], cargas.loc[SINTOMAS, "CP2"], color="#3E7CB1", label="síntomas generales")
-der.scatter(cargas.loc[ALARMA, "CP1"], cargas.loc[ALARMA, "CP2"], color="#A8432C", label="signos de alarma")
+der.scatter(cargas.loc[SINTOMAS, "CP1"], cargas.loc[SINTOMAS, "CP2"], color="#5BC0EB", label="síntomas generales")
+der.scatter(cargas.loc[ALARMA, "CP1"], cargas.loc[ALARMA, "CP2"], color="#D7263D", label="signos de alarma")
 for nombre, (a, b) in cargas.iterrows():
     der.text(a, b, " " + nombre, fontsize=7)
 der.axhline(0, color="gray", lw=0.5); der.axvline(0, color="gray", lw=0.5)
@@ -1047,13 +1047,13 @@ for nombre, modelo in cinco_modelos().items():
 todos = pd.DataFrame(errores).T
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(14, 4.2))
-todos[["captación en validación", "captación en prueba"]].sort_values("captación en validación").plot.barh(ax=izq, color=["#16302B", "#E0A526"])
+todos[["captación en validación", "captación en prueba"]].sort_values("captación en validación").plot.barh(ax=izq, color=["#1D4E89", "#1B998B"])
 izq.axvline(CUPO, color="gray", ls=":"); izq.set(xlabel="captación", title="Siete candidatos: validación para escoger, prueba para reportar")
 fracciones = np.linspace(0.02, 1, 50)
 for nombre, puntaje in puntajes.items():
-    estilo = {"color": "gray", "ls": ":"} if nombre == "sorteo" else {"color": "#E0A526", "lw": 2} if nombre.startswith("regla") else {"lw": 1.2}
+    estilo = {"color": "gray", "ls": ":"} if nombre == "sorteo" else {"color": "#1B998B", "lw": 2} if nombre.startswith("regla") else {"lw": 1.2}
     der.plot(fracciones * 100, [captacion(y[P], puntaje, f) for f in fracciones], label=nombre, **estilo)
-der.axvline(CUPO * 100, color="#A8432C", lw=1)
+der.axvline(CUPO * 100, color="#D7263D", lw=1)
 der.set(xlabel="% de casos con llamada", ylabel="captación", title="Captación según la capacidad del equipo, en la prueba"); der.legend(fontsize=8)
 plt.tight_layout(); plt.show()
 display(todos.sort_values("captación en validación", ascending=False).round(3))
@@ -1111,7 +1111,7 @@ $$\text{OR}_j=e^{\beta_j}.$$
 ("code", r'''
 logistica = cinco_modelos()["logística"].fit(X[E | V], y[E | V])
 razones = pd.Series(np.exp(logistica[-1].coef_[0]), index=variables).sort_values()
-razones.plot.barh(figsize=(8, 6), color=["#3E7CB1" if r < 1 else "#A8432C" for r in razones])
+razones.plot.barh(figsize=(8, 6), color=["#5BC0EB" if r < 1 else "#D7263D" for r in razones])
 plt.axvline(1, color="gray"); plt.xlabel("razón de probabilidades por desviación estándar")
 plt.title("Qué acompaña a la hospitalización"); plt.show()
 print(razones.round(2).to_string())

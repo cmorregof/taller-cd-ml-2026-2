@@ -102,7 +102,7 @@ nombres = regulares.assign(nombre_ruta=np.where(regulares["origen"] == AEROPUERT
 fig, (izq, der) = plt.subplots(1, 2, figsize=(14, 3.8))
 mensual[principales].plot(ax=izq, lw=1.3); izq.set(title=f"Pasajeros mensuales por ruta, {AEROPUERTO} (ida y vuelta)", xlabel=""); izq.legend(fontsize=8)
 por_empresa = regulares.groupby(["anio", "nombre"])["pasajeros"].sum().unstack(fill_value=0)
-por_empresa[por_empresa.sum().sort_values(ascending=False).index[:5]].plot.bar(stacked=True, ax=der, cmap="YlOrBr_r", rot=0)
+por_empresa[por_empresa.sum().sort_values(ascending=False).index[:5]].plot.bar(stacked=True, ax=der, cmap="Blues_r", rot=0)
 der.set(title="Pasajeros por año y aerolínea (2026 va hasta el último mes del dato)", xlabel=""); der.legend(fontsize=7)
 plt.tight_layout(); plt.show()
 print("Rutas con más pasajeros en todo el periodo:", {f"{r} ({nombres[r]})": int(mensual[r].sum()) for r in principales})
@@ -234,17 +234,17 @@ maximo = perdidas["pasajeros en el mejor año"].max()
 for ruta in en_mapa:
     fila, alla = perdidas.loc[ruta], coordenadas.loc[ruta]
     tablero.add_trace(go.Scattergeo(lon=[aqui["longitude_deg"], alla["longitude_deg"]], lat=[aqui["latitude_deg"], alla["latitude_deg"]], mode="lines+markers",
-                                    line=dict(width=1 + 7 * fila["pasajeros en el mejor año"] / maximo, color="#A8432C" if fila["pérdida (%)"] > 50 else "#16302B"),
+                                    line=dict(width=1 + 7 * fila["pasajeros en el mejor año"] / maximo, color="#D7263D" if fila["pérdida (%)"] > 50 else "#1D4E89"),
                                     name=ruta, showlegend=False, hoverinfo="text",
                                     text=f"{AEROPUERTO} – {ruta} ({fila['ciudad']})<br>mejor año: {fila['pasajeros en el mejor año']:,.0f}<br>últimos 12 meses: {fila['últimos 12 meses']:,.0f}"), row=1, col=1)
 orden = perdidas.sort_values("pérdida anual")
-tablero.add_trace(go.Bar(y=[f"{r} ({c})" for r, c in zip(orden.index, orden["ciudad"])], x=orden["pérdida anual"], orientation="h", marker_color="#A8432C", showlegend=False,
+tablero.add_trace(go.Bar(y=[f"{r} ({c})" for r, c in zip(orden.index, orden["ciudad"])], x=orden["pérdida anual"], orientation="h", marker_color="#D7263D", showlegend=False,
                          error_x=dict(type="data", symmetric=False, array=orden["superior"] - orden["pérdida anual"], arrayminus=orden["pérdida anual"] - orden["inferior"])), row=1, col=2)
 for ruta in perdidas.index:
     tablero.add_trace(go.Scatter(x=mensual.index, y=mensual[ruta], mode="lines", name=f"{ruta} ({perdidas.loc[ruta, 'ciudad']})"), row=2, col=1)
 
 mayor = perdidas.iloc[0]
-tablero.update_geos(fitbounds="locations", showcountries=True, countrycolor="gray", showland=True, landcolor="#f4efe4")
+tablero.update_geos(fitbounds="locations", showcountries=True, countrycolor="gray", showland=True, landcolor="#F2F5F9")
 tablero.update_layout(
     height=820, template="plotly_white", legend=dict(orientation="h", y=-0.08),
     title=dict(text=(f"<b>{AEROPUERTO}: la ruta a {mayor['ciudad'].title()} perdió cerca de {mayor['pérdida anual']:,.0f} pasajeros al año</b>"

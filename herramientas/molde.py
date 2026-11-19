@@ -29,7 +29,9 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 from taller import descargar, procedencia
 
-plt.rcParams.update({{"figure.figsize": (9, 4), "axes.spines.top": False, "axes.spines.right": False}})
+PALETA = ["#1D4E89", "#D7263D", "#1B998B", "#6C4AB6", "#5BC0EB", "#F49097", "#9AA5B1"]      # colores del curso
+plt.rcParams.update({{"figure.figsize": (9, 4), "axes.spines.top": False, "axes.spines.right": False,
+                     "axes.prop_cycle": plt.cycler(color=PALETA), "axes.titleweight": "bold", "figure.dpi": 110}})
 print("Herramientas listas.")'''
 
 def cuaderno(celdas, estudiante):

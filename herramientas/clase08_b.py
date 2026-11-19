@@ -89,11 +89,11 @@ en_la_region = aves["latitude"].between(-4.3, 13.5) & aves["longitude"].between(
 print(f"\nGrabaciones dentro del rectángulo de Colombia: {int(en_la_region.sum())} de {len(aves)} | sin coordenadas: {int(aves['latitude'].isna().sum())}")
 
 fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(14, 3.6))
-izq.hist(aves["segundos"].clip(upper=120), bins=40, color="#16302B")
+izq.hist(aves["segundos"].clip(upper=120), bins=40, color="#1D4E89")
 izq.set(title="Duración (recortada en 120 s)", xlabel="segundos")
-aves["rating"].value_counts().sort_index().plot.bar(ax=centro, color="#E0A526", rot=0)
+aves["rating"].value_counts().sort_index().plot.bar(ax=centro, color="#1B998B", rot=0)
 centro.set(title="Calificación de calidad", xlabel="rating")
-der.scatter(aves["longitude"], aves["latitude"], s=6, color="#A8432C", alpha=0.5)
+der.scatter(aves["longitude"], aves["latitude"], s=6, color="#D7263D", alpha=0.5)
 der.add_patch(plt.Rectangle((-79.1, -4.3), 12.3, 17.8, fill=False, color="black", ls="--"))
 der.set(title="Dónde se grabó", xlabel="longitud", ylabel="latitud")
 plt.tight_layout(); plt.show()
@@ -125,7 +125,7 @@ display(Audio(onda[:5 * fs], rate=fs))
 
 S = librosa.feature.melspectrogram(y=onda, sr=fs, n_fft=1024, hop_length=512, n_mels=48, fmin=300, fmax=14000)
 fig, (arriba, abajo) = plt.subplots(2, 1, figsize=(12, 5), sharex=True)
-arriba.plot(np.arange(len(onda)) / fs, onda, color="#16302B", lw=0.4); arriba.set(title="La onda", ylabel="amplitud")
+arriba.plot(np.arange(len(onda)) / fs, onda, color="#1D4E89", lw=0.4); arriba.set(title="La onda", ylabel="amplitud")
 imagen = abajo.imshow(10 * np.log10(S + 1e-10), origin="lower", aspect="auto", cmap="magma", extent=[0, len(onda) / fs, 0, 48])
 abajo.set(title="Espectrograma en escala mel", xlabel="segundos", ylabel="banda mel")
 plt.tight_layout(); plt.show()
@@ -218,10 +218,10 @@ especie_ventana = aves["common_name"].values[de_grabacion]
 cuatro = list(aves["common_name"].drop_duplicates().iloc[[0, 12, 25, 40]])
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 4))
-izq.bar(range(1, 11), pca.explained_variance_ratio_ * 100, color="#16302B")
+izq.bar(range(1, 11), pca.explained_variance_ratio_ * 100, color="#1D4E89")
 izq.set(title="Varianza explicada", xlabel="componente", ylabel="%")
 der.scatter(Z[:, 0], Z[:, 1], s=4, color="lightgray")
-for nombre, color in zip(cuatro, ["#A8432C", "#16302B", "#E0A526", "#3B7EA1"]):
+for nombre, color in zip(cuatro, ["#D7263D", "#1D4E89", "#1B998B", "#3B7EA1"]):
     der.scatter(Z[especie_ventana == nombre, 0], Z[especie_ventana == nombre, 1], s=12, color=color, label=nombre)
 der.set(title="Ventanas en los dos primeros componentes", xlabel="CP1", ylabel="CP2"); der.legend(fontsize=8)
 plt.tight_layout(); plt.show()
@@ -330,7 +330,7 @@ for nombre, modelo in cinco_modelos().items():
 comparacion = pd.DataFrame(filas_tabla).T
 display((comparacion[["validación", "prueba", "top-3 en prueba"]] * 100).round(1).join(comparacion["segundos"]))
 
-(comparacion[["validación", "prueba"]] * 100).sort_values("validación").plot.barh(color=["#16302B", "#E0A526"], figsize=(9, 4))
+(comparacion[["validación", "prueba"]] * 100).sort_values("validación").plot.barh(color=["#1D4E89", "#1B998B"], figsize=(9, 4))
 plt.xlabel("exactitud por grabación (%)"); plt.title("Validación para escoger, prueba para reportar"); plt.show()
 
 mejor = comparacion.drop(index=["azar", "tres MFCC"])["validación"].idxmax()
@@ -443,8 +443,8 @@ print(f"Al azar, 95 % de los sorteos caen entre {np.percentile(simulado, 2.5) * 
 cobertura = np.arange(1, n + 1)
 exactitud_acumulada = np.cumsum(acierta[orden[::-1]]) / cobertura
 plt.figure(figsize=(9, 3.6))
-plt.plot(cobertura, exactitud_acumulada * 100, color="#16302B")
-plt.axvline(n - REVISIONES, color="#A8432C", ls="--"); plt.axhline(a * 100, color="gray", ls=":")
+plt.plot(cobertura, exactitud_acumulada * 100, color="#1D4E89")
+plt.axvline(n - REVISIONES, color="#D7263D", ls="--"); plt.axhline(a * 100, color="gray", ls=":")
 plt.xlabel("grabaciones que se le dejan al modelo, de la más segura a la menos segura"); plt.ylabel("exactitud del modelo en ellas (%)")
 plt.title("Entre más seguro dice estar el modelo, ¿más acierta?"); plt.show()
 

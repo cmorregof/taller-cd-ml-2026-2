@@ -159,15 +159,15 @@ print("Faltantes por columna:")
 print(muestra[["age", "sex", "localization"]].isna().sum().to_string(), "| sexo 'unknown':", (muestra["sex"] == "unknown").sum(), "| sitio 'unknown':", (muestra["localization"] == "unknown").sum())
 
 fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(14, 4))
-for etiqueta, color in [("nv", "#16302B"), ("mel", "#A8432C")]:
+for etiqueta, color in [("nv", "#1D4E89"), ("mel", "#D7263D")]:
     muestra.loc[muestra["dx"] == etiqueta, "age"].plot.hist(ax=izq, bins=range(0, 91, 5), alpha=0.6, color=color, density=True, label=etiqueta)
 izq.set(title="Edad según el diagnóstico", xlabel="años", ylabel="densidad"); izq.legend()
 
 por_sexo = muestra[muestra["sex"] != "unknown"].groupby("sex")["melanoma"].mean() * 100
-por_sexo.plot.bar(ax=centro, color="#E0A526", rot=0); centro.set(title="Melanomas por sexo", xlabel="", ylabel="% de las imágenes")
+por_sexo.plot.bar(ax=centro, color="#1B998B", rot=0); centro.set(title="Melanomas por sexo", xlabel="", ylabel="% de las imágenes")
 
 por_sitio = muestra.groupby("localization")["melanoma"].agg(["mean", "size"]).query("size >= 40").sort_values("mean")
-(por_sitio["mean"] * 100).plot.barh(ax=der, color="#16302B"); der.axvline(y.mean() * 100, color="gray", ls=":")
+(por_sitio["mean"] * 100).plot.barh(ax=der, color="#1D4E89"); der.axvline(y.mean() * 100, color="gray", ls=":")
 der.set(title="Melanomas por sitio del cuerpo (40 imágenes o más)", xlabel="% de las imágenes", ylabel="")
 plt.tight_layout(); plt.show()
 
@@ -252,12 +252,12 @@ plano = pca.transform(Z)[:, :2]
 acumulada = pca.explained_variance_ratio_.cumsum() * 100
 
 fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(15, 4.3))
-izq.plot(range(1, 51), acumulada, color="#16302B"); izq.set(title="Varianza acumulada", xlabel="componentes", ylabel="%")
-for etiqueta, color in [("nv", "#16302B"), ("mel", "#A8432C")]:
+izq.plot(range(1, 51), acumulada, color="#1D4E89"); izq.set(title="Varianza acumulada", xlabel="componentes", ylabel="%")
+for etiqueta, color in [("nv", "#1D4E89"), ("mel", "#D7263D")]:
     cuales = (muestra["dx"] == etiqueta).to_numpy()
     centro.scatter(plano[cuales, 0], plano[cuales, 1], s=5, alpha=0.4, color=color, label=etiqueta)
 centro.set(title="Coloreado por diagnóstico", xlabel="CP1", ylabel="CP2"); centro.legend(markerscale=3)
-for origen, color in zip(sorted(muestra["dataset"].unique()), ["#A8432C", "#16302B", "#E0A526", "#5B7DB1"]):
+for origen, color in zip(sorted(muestra["dataset"].unique()), ["#D7263D", "#1D4E89", "#1B998B", "#5B7DB1"]):
     cuales = (muestra["dataset"] == origen).to_numpy()
     der.scatter(plano[cuales, 0], plano[cuales, 1], s=5, alpha=0.4, color=color, label=origen)
 der.set(title="Coloreado por origen de la imagen", xlabel="CP1", ylabel="CP2"); der.legend(markerscale=3, fontsize=8)
@@ -390,7 +390,7 @@ comparacion = pd.DataFrame(resultados).T
 print(f"Tiempo: {time.time() - inicio:.0f} s")
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 4.5))
-comparacion.sort_values("validación").plot.barh(ax=izq, color=["#16302B", "#E0A526"])
+comparacion.sort_values("validación").plot.barh(ax=izq, color=["#1D4E89", "#1B998B"])
 izq.axvline(0.5, color="gray", ls=":"); izq.set(title="AUC: validación para escoger, prueba para reportar", xlabel="AUC", xlim=(0.45, 1))
 for nombre, (fp, vp, _) in curvas.items():
     der.plot(fp, vp, label=f"{nombre} ({comparacion.loc[nombre, 'validación']:.3f})")
@@ -432,7 +432,7 @@ for nombre, modelo in cinco_modelos().items():
 trampa = pd.DataFrame(trampa).T
 print(f"Tiempo: {time.time() - inicio:.0f} s")
 
-trampa[["por lesión", "al azar por imagen"]].plot.bar(color=["#16302B", "#A8432C"], rot=0, figsize=(9, 4))
+trampa[["por lesión", "al azar por imagen"]].plot.bar(color=["#1D4E89", "#D7263D"], rot=0, figsize=(9, 4))
 plt.ylim(0.5, 1); plt.ylabel("AUC"); plt.title("El mismo modelo, dos exámenes"); plt.show()
 display(trampa.round(3))
 '''),
@@ -461,9 +461,9 @@ repeticiones = pd.DataFrame(repeticiones)
 print(f"Tiempo: {time.time() - inicio:.0f} s")
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 4))
-repeticiones[["logística, por lesión", "logística, al azar"]].plot.box(ax=izq, color="#16302B")
+repeticiones[["logística, por lesión", "logística, al azar"]].plot.box(ax=izq, color="#1D4E89")
 izq.set(title="Regresión logística: AUC en 30 sorteos", ylabel="AUC")
-repeticiones[["1 vecino, por lesión", "1 vecino, al azar"]].plot.box(ax=der, color="#A8432C")
+repeticiones[["1 vecino, por lesión", "1 vecino, al azar"]].plot.box(ax=der, color="#D7263D")
 der.set(title="Un vecino: exactitud en 30 sorteos", ylabel="exactitud")
 plt.tight_layout(); plt.show()
 

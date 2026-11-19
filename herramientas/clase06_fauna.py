@@ -104,7 +104,7 @@ print("¿Cada ráfaga aparece una sola vez?", tabla["seq_id"].is_unique)
 ''', r'''
 cruce = pd.crosstab(tabla["camara"], tabla["especie"])
 plt.figure(figsize=(7, 10))
-plt.imshow(cruce, aspect="auto", cmap="YlOrBr")
+plt.imshow(cruce, aspect="auto", cmap="Blues")
 plt.xticks(range(cruce.shape[1]), cruce.columns, rotation=60, ha="right", fontsize=8)
 plt.yticks(range(cruce.shape[0]), cruce.index, fontsize=6); plt.colorbar(label="fotos")
 plt.title("Fotos por cámara y especie"); plt.tight_layout(); plt.show()
@@ -291,7 +291,7 @@ for nombre, modelo in cinco_modelos().items():
     resultados[nombre] = medir(lambda tramo, m=modelo: m.predict(X[tramo]))
 comparacion = pd.DataFrame(resultados).T.sort_values("balanceada (val)", ascending=False)
 print(f"Tiempo: {time.time() - inicio:.0f} s")
-comparacion[["balanceada (val)", "balanceada (prueba)"]].iloc[::-1].plot.barh(color=["#16302B", "#E0A526"], figsize=(8, 3.8))
+comparacion[["balanceada (val)", "balanceada (prueba)"]].iloc[::-1].plot.barh(color=["#1D4E89", "#1B998B"], figsize=(8, 3.8))
 plt.xlabel("exactitud balanceada en cámaras nuevas"); plt.show()
 display(comparacion.round(3))
 mejor = comparacion.loc[list(cinco_modelos()), "balanceada (val)"].idxmax()
@@ -320,7 +320,7 @@ for semilla in range(30):
     repeticiones.append(fila)
 repeticiones = pd.DataFrame(repeticiones)
 print(f"Tiempo: {time.time() - inicio:.0f} s")
-repeticiones.plot.box(figsize=(10, 4), color="#16302B", rot=10); plt.ylabel("exactitud"); plt.title("30 sorteos"); plt.show()
+repeticiones.plot.box(figsize=(10, 4), color="#1D4E89", rot=10); plt.ylabel("exactitud"); plt.title("30 sorteos"); plt.show()
 display(repeticiones.agg(["mean", "std"]).T.round(3))
 '''),
 ("md", r'''
@@ -353,7 +353,7 @@ pred_V = ganador.predict(X[V])
 especies = sorted(tabla["especie"].unique())
 print(pd.Series(pred_V == y[V]).groupby(y[V]).agg(["mean", "size"]).rename(columns={"mean": "acierto", "size": "fotos"}).round(2).sort_values("acierto").to_string())
 confusion = pd.crosstab(pd.Series(y[V], name="real"), pd.Series(pred_V, name="modelo"), normalize="index").reindex(index=especies, columns=especies, fill_value=0)
-plt.figure(figsize=(6.5, 5.5)); plt.imshow(confusion, cmap="YlOrBr", vmin=0, vmax=1)
+plt.figure(figsize=(6.5, 5.5)); plt.imshow(confusion, cmap="Blues", vmin=0, vmax=1)
 plt.xticks(range(8), especies, rotation=60, ha="right", fontsize=8); plt.yticks(range(8), especies, fontsize=8)
 for i in range(8):
     for j in range(8):
@@ -376,7 +376,7 @@ for cuantas in [4, 8, 16, len(camaras_E)]:
         modelo = cinco_modelos()["logística"].fit(X[sub], y[sub])
         curva.append({"cámaras": cuantas, "fotos": len(sub), "exactitud": exactitud(y[V], modelo.predict(X[V]))})
 curva = pd.DataFrame(curva).groupby("cámaras").agg(fotos=("fotos", "mean"), exactitud=("exactitud", "mean"), desviacion=("exactitud", "std"))
-plt.figure(figsize=(7, 3.8)); plt.errorbar(curva.index, curva["exactitud"], yerr=curva["desviacion"].fillna(0), fmt="o-", color="#A8432C", capsize=3)
+plt.figure(figsize=(7, 3.8)); plt.errorbar(curva.index, curva["exactitud"], yerr=curva["desviacion"].fillna(0), fmt="o-", color="#D7263D", capsize=3)
 plt.xlabel("cámaras en el entrenamiento"); plt.ylabel("exactitud en cámaras nuevas (validación)"); plt.title("Más sitios distintos"); plt.show()
 display(curva.round(3))
 '''),
@@ -432,7 +432,7 @@ print(f"Modelo: {decisor_nombre} | CONFIANZA = {CONFIANZA}")
 display(informe.round(3))
 
 plt.figure(figsize=(7, 4))
-for nombre, modelo, tramo, color in [("en casa", en_casa, prueba_a, "#5B7DB1"), ("cámaras nuevas (prueba)", decisor, P, "#A8432C")]:
+for nombre, modelo, tramo, color in [("en casa", en_casa, prueba_a, "#5B7DB1"), ("cámaras nuevas (prueba)", decisor, P, "#D7263D")]:
     puntos = [regla(modelo, tramo, u)[0] for u in np.linspace(0.2, 0.99, 40)]
     plt.plot([q["cobertura"] for q in puntos], [q["exactitud selectiva"] for q in puntos], color=color, label=nombre)
 plt.xlabel("cobertura: fracción de fotos que etiqueta el modelo"); plt.ylabel("exactitud selectiva"); plt.legend(); plt.title("Lo que se promete y lo que se cumple"); plt.show()

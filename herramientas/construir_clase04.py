@@ -140,22 +140,22 @@ def tasa_por(grupo):
 
 fig, ejes = plt.subplots(2, 2, figsize=(13, 8))
 eje = ejes[0, 0]
-eje.scatter(juego.loc[y == 0, "x"], juego.loc[y == 0, "y"], s=8, color="#3E7CB1", alpha=0.35, label="no fue gol")
-eje.scatter(juego.loc[y == 1, "x"], juego.loc[y == 1, "y"], s=22, color="#A8432C", label="gol")
+eje.scatter(juego.loc[y == 0, "x"], juego.loc[y == 0, "y"], s=8, color="#5BC0EB", alpha=0.35, label="no fue gol")
+eje.scatter(juego.loc[y == 1, "x"], juego.loc[y == 1, "y"], s=22, color="#D7263D", label="gol")
 eje.plot([120, 120], [36, 44], color="black", lw=4); eje.plot([102, 102, 120], [18, 62, 62], color="gray", lw=1); eje.plot([102, 120], [18, 18], color="gray", lw=1)
 eje.set(xlim=(75, 121), ylim=(80, 0), title="Dónde se remató (el arco está a la derecha)", xlabel="x", ylabel="y"); eje.legend(fontsize=8)
 
 por_distancia = tasa_por(pd.cut(X["distancia_m"], [0, 6, 9, 12, 16, 20, 25, 30, 60]))
-ejes[0, 1].bar([str(i) for i in por_distancia.index], por_distancia["tasa"], yerr=2 * por_distancia["ee"], color="#16302B", ecolor="#E0A526")
+ejes[0, 1].bar([str(i) for i in por_distancia.index], por_distancia["tasa"], yerr=2 * por_distancia["ee"], color="#1D4E89", ecolor="#1B998B")
 ejes[0, 1].set(title="Tasa de gol según la distancia (m)", ylabel="%"); ejes[0, 1].tick_params(axis="x", rotation=30, labelsize=8)
 
 por_angulo = tasa_por(pd.cut(X["angulo"], [0, 10, 15, 20, 30, 45, 180]))
-ejes[1, 0].bar([str(i) for i in por_angulo.index], por_angulo["tasa"], yerr=2 * por_angulo["ee"], color="#16302B", ecolor="#E0A526")
+ejes[1, 0].bar([str(i) for i in por_angulo.index], por_angulo["tasa"], yerr=2 * por_angulo["ee"], color="#1D4E89", ecolor="#1B998B")
 ejes[1, 0].set(title="Tasa de gol según el ángulo con que se ve el arco (grados)", ylabel="%"); ejes[1, 0].tick_params(axis="x", rotation=30, labelsize=8)
 
 clase = np.select([X["penal"] == 1, X["tiro_libre"] == 1, X["cabeza"] == 1, X["mano_a_mano"] == 1], ["penal", "tiro libre", "cabeza", "mano a mano"], "pie, en juego")
 por_clase = tasa_por(pd.Series(clase, index=y.index)).sort_values("tasa")
-ejes[1, 1].barh([f"{nombre} (n={int(n)})" for nombre, n in zip(por_clase.index, por_clase["n"])], por_clase["tasa"], xerr=2 * por_clase["ee"], color="#E0A526", ecolor="#16302B")
+ejes[1, 1].barh([f"{nombre} (n={int(n)})" for nombre, n in zip(por_clase.index, por_clase["n"])], por_clase["tasa"], xerr=2 * por_clase["ee"], color="#1B998B", ecolor="#1D4E89")
 ejes[1, 1].set(title="Tasa de gol según la clase de remate", xlabel="%")
 plt.tight_layout(); plt.show()
 print(f"Mediana de la distancia: {X['distancia_m'].median():.1f} m | remates desde más de 20 m: {(X['distancia_m'] > 20).mean() * 100:.0f} %, con tasa de gol de {y[X['distancia_m'] > 20].mean() * 100:.1f} %")
@@ -180,7 +180,7 @@ grupo = pd.Series(KMeans(n_clusters=4, n_init=10, random_state=0).fit_predict(ge
 resumen_grupos = pd.DataFrame({"remates": grupo.value_counts(), "distancia media (m)": X.groupby(grupo)["distancia_m"].mean(),
                                "ángulo medio": X.groupby(grupo)["angulo"].mean(), "tasa de gol (%)": y.groupby(grupo).mean() * 100}).sort_values("distancia media (m)")
 
-colores = dict(zip(resumen_grupos.index, ["#A8432C", "#E0A526", "#3E7CB1", "#16302B"]))
+colores = dict(zip(resumen_grupos.index, ["#D7263D", "#1B998B", "#5BC0EB", "#1D4E89"]))
 plt.figure(figsize=(7, 5))
 plt.scatter(juego["x"], juego["y"], s=10, c=grupo.map(colores))
 plt.plot([120, 120], [36, 44], color="black", lw=4); plt.xlim(75, 121); plt.ylim(80, 0); plt.title("Cuatro grupos de remates, armados sin mirar el gol"); plt.show()
@@ -291,7 +291,7 @@ for nombre, modelo in cinco_modelos().items():
     errores[nombre] = {"validación": en_validacion, **puntuar(y[P], probabilidades[nombre])}
 todos = pd.DataFrame(errores).T
 
-todos[["validación", "pérdida logarítmica"]].rename(columns={"pérdida logarítmica": "prueba"}).sort_values("validación").plot.barh(figsize=(9, 4), color=["#16302B", "#E0A526"])
+todos[["validación", "pérdida logarítmica"]].rename(columns={"pérdida logarítmica": "prueba"}).sort_values("validación").plot.barh(figsize=(9, 4), color=["#1D4E89", "#1B998B"])
 plt.xlabel("pérdida logarítmica (menos es mejor)"); plt.title("Siete candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
 display(todos.sort_values("validación").round(4))
 '''),
@@ -392,7 +392,7 @@ def calibracion(real, prob, tramos=5):
 
 curvas = {"sin balancear": p_normal, "balanceado": p_balanceado, "StatsBomb": juego["statsbomb_xg"][P].values}
 plt.figure(figsize=(6.5, 5.5))
-for (nombre, prob), color in zip(curvas.items(), ["#16302B", "#A8432C", "#3E7CB1"]):
+for (nombre, prob), color in zip(curvas.items(), ["#1D4E89", "#D7263D", "#5BC0EB"]):
     tabla, ece = calibracion(y[P], prob)
     plt.plot(tabla["predicha"], tabla["observada"], marker="o", color=color, label=f"{nombre} (ECE {ece:.3f})")
 plt.plot([0, 1], [0, 1], color="gray", ls=":"); plt.xlim(0, 0.8); plt.ylim(0, 0.8)
@@ -418,10 +418,10 @@ for variable in variables[2:]:
 de_frente["cabeza"] = 0; de_frente["penal"] = 0; de_frente["tiro_libre"] = 0
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 4.2))
-razones.plot.barh(ax=izq, color=["#3E7CB1" if r < 1 else "#A8432C" for r in razones]); izq.axvline(1, color="gray")
+razones.plot.barh(ax=izq, color=["#5BC0EB" if r < 1 else "#D7263D" for r in razones]); izq.axvline(1, color="gray")
 izq.set(title="Razón de probabilidades por desviación estándar", xlabel="menor que 1 baja la probabilidad de gol; mayor que 1 la sube")
-der.plot(distancias, modelo_final.predict_proba(de_frente[columnas])[:, 1] * 100, color="#A8432C", label="de pie")
-der.plot(distancias, modelo_final.predict_proba(de_frente.assign(cabeza=1)[columnas])[:, 1] * 100, color="#3E7CB1", label="de cabeza")
+der.plot(distancias, modelo_final.predict_proba(de_frente[columnas])[:, 1] * 100, color="#D7263D", label="de pie")
+der.plot(distancias, modelo_final.predict_proba(de_frente.assign(cabeza=1)[columnas])[:, 1] * 100, color="#5BC0EB", label="de cabeza")
 der.axvline(16.5, color="gray", ls=":"); der.text(16.8, der.get_ylim()[1] * 0.9, "borde del área", fontsize=8, color="gray")
 der.set(title=f"Probabilidad de gol de frente al arco ({elegido})", xlabel="distancia (m)", ylabel="%"); der.legend()
 plt.tight_layout(); plt.show()
@@ -610,7 +610,7 @@ print("Filas en que el año de la fecha no coincide con la columna AA_Acc:", int
 ("code", r'''
 por_anio = pd.crosstab(crudo["AA_Acc"], crudo["Gravedad_indicador_30d"])
 display(por_anio)
-por_anio.plot(figsize=(9, 3.4), color=["#E0A526", "#A8432C", "#16302B"], marker="o"); plt.title("Siniestros registrados por año, según la gravedad"); plt.xlabel(""); plt.show()
+por_anio.plot(figsize=(9, 3.4), color=["#1B998B", "#D7263D", "#1D4E89"], marker="o"); plt.title("Siniestros registrados por año, según la gravedad"); plt.xlabel(""); plt.show()
 '''),
 ("md", r'''
 Los siniestros de solo daños se desploman en 2023. La ciudad no se volvió más prudente de un año para otro. Lo que cambió fue la norma sobre el registro de los choques sin víctimas, y desde entonces casi no entran a esta tabla. Una serie que mezcle los tres valores mostraría una caída de la siniestralidad que nunca ocurrió.
@@ -699,23 +699,23 @@ def tasa_por(grupo):
 
 fig, ejes = plt.subplots(2, 2, figsize=(13, 8))
 anual = tasa_por(victimas["AA_Acc"])
-ejes[0, 0].bar(anual.index, anual["n"], color="#16302B"); ejes[0, 0].set(title="Siniestros con víctimas por año", ylabel="siniestros")
-otro = ejes[0, 0].twinx(); otro.errorbar(anual.index, anual["tasa"], yerr=2 * anual["ee"], color="#A8432C", marker="o"); otro.set_ylabel("% mortal", color="#A8432C"); otro.spines["right"].set_visible(True)
+ejes[0, 0].bar(anual.index, anual["n"], color="#1D4E89"); ejes[0, 0].set(title="Siniestros con víctimas por año", ylabel="siniestros")
+otro = ejes[0, 0].twinx(); otro.errorbar(anual.index, anual["tasa"], yerr=2 * anual["ee"], color="#D7263D", marker="o"); otro.set_ylabel("% mortal", color="#D7263D"); otro.spines["right"].set_visible(True)
 
 horaria = tasa_por(hora)
-ejes[0, 1].bar(horaria.index, horaria["n"], color="#16302B"); ejes[0, 1].set(title="Por hora del día", xlabel="hora", ylabel="siniestros")
-otro = ejes[0, 1].twinx(); otro.errorbar(horaria.index, horaria["tasa"], yerr=2 * horaria["ee"], color="#A8432C", marker="o"); otro.set_ylabel("% mortal", color="#A8432C"); otro.spines["right"].set_visible(True)
+ejes[0, 1].bar(horaria.index, horaria["n"], color="#1D4E89"); ejes[0, 1].set(title="Por hora del día", xlabel="hora", ylabel="siniestros")
+otro = ejes[0, 1].twinx(); otro.errorbar(horaria.index, horaria["tasa"], yerr=2 * horaria["ee"], color="#D7263D", marker="o"); otro.set_ylabel("% mortal", color="#D7263D"); otro.spines["right"].set_visible(True)
 
 todas = pd.concat([X.drop(columns=["hora_sen", "hora_cos"]), hipotesis], axis=1)
 letalidad = pd.DataFrame({"n": todas.sum(), "tasa": [y[todas[c] == 1].mean() * 100 if todas[c].sum() else np.nan for c in todas]}).dropna().sort_values("tasa")
 letalidad["ee"] = np.sqrt(letalidad["tasa"] * (100 - letalidad["tasa"]) / letalidad["n"])
 ejes[1, 0].barh([f"{nombre} (n={int(n)})" for nombre, n in zip(letalidad.index, letalidad["n"])], letalidad["tasa"], xerr=2 * letalidad["ee"],
-                color=["#A8432C" if nombre in hipotesis else "#E0A526" for nombre in letalidad.index], ecolor="#16302B")
+                color=["#D7263D" if nombre in hipotesis else "#1B998B" for nombre in letalidad.index], ecolor="#1D4E89")
 ejes[1, 0].axvline(y.mean() * 100, color="gray", ls=":"); ejes[1, 0].set(title="% mortal cuando la condición está presente (rojo: hipótesis)", xlabel="%"); ejes[1, 0].tick_params(axis="y", labelsize=8)
 
 con_lugar = victimas["Latitud"].notna()
-ejes[1, 1].hexbin(victimas.loc[con_lugar, "Longitud"], victimas.loc[con_lugar, "Latitud"], gridsize=70, cmap="YlOrBr", mincnt=1, bins="log")
-ejes[1, 1].scatter(victimas.loc[con_lugar & (y == 1), "Longitud"], victimas.loc[con_lugar & (y == 1), "Latitud"], s=2, color="#16302B", alpha=0.4)
+ejes[1, 1].hexbin(victimas.loc[con_lugar, "Longitud"], victimas.loc[con_lugar, "Latitud"], gridsize=70, cmap="Blues", mincnt=1, bins="log")
+ejes[1, 1].scatter(victimas.loc[con_lugar & (y == 1), "Longitud"], victimas.loc[con_lugar & (y == 1), "Latitud"], s=2, color="#1D4E89", alpha=0.4)
 ejes[1, 1].set(title="Dónde ocurren (puntos oscuros: mortales)", xlim=(-74.23, -74.0), ylim=(4.45, 4.84)); ejes[1, 1].set_xticks([]); ejes[1, 1].set_yticks([])
 plt.tight_layout(); plt.show()
 '''),
@@ -827,7 +827,7 @@ for nombre, modelo in cinco_modelos().items():
     errores[nombre] = {"validación": en_validacion, **puntuar(y[P], probabilidades[nombre])}
 todos = pd.DataFrame(errores).T
 
-todos[["validación", "pérdida logarítmica"]].rename(columns={"pérdida logarítmica": "prueba"}).sort_values("validación").plot.barh(figsize=(9, 4), color=["#16302B", "#E0A526"])
+todos[["validación", "pérdida logarítmica"]].rename(columns={"pérdida logarítmica": "prueba"}).sort_values("validación").plot.barh(figsize=(9, 4), color=["#1D4E89", "#1B998B"])
 plt.xlabel("pérdida logarítmica (menos es mejor)"); plt.title("Siete candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
 display(todos.sort_values("validación").round(4))
 
@@ -882,7 +882,7 @@ def calibracion(real, prob, tramos=10):
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 4.6))
 for eje, limite in [(izq, 1.0), (der, 0.25)]:
-    for (nombre, prob), color in zip({"sin balancear": p_normal, "balanceado": p_balanceado, "balanceado y recalibrado": p_recalibrado}.items(), ["#16302B", "#A8432C", "#3E7CB1"]):
+    for (nombre, prob), color in zip({"sin balancear": p_normal, "balanceado": p_balanceado, "balanceado y recalibrado": p_recalibrado}.items(), ["#1D4E89", "#D7263D", "#5BC0EB"]):
         tabla, ece = calibracion(y[P], prob)
         eje.plot(tabla["predicha"], tabla["observada"], marker="o", color=color, label=f"{nombre} (ECE {ece:.3f})")
     eje.plot([0, 1], [0, 1], color="gray", ls=":"); eje.set(xlim=(0, limite), ylim=(0, 0.25), xlabel="probabilidad promedio que dio el modelo", ylabel="fracción de mortales que hubo")
@@ -904,7 +904,7 @@ Con las variables estandarizadas, $\text{OR}_j=e^{\beta_j}$ es la razón de prob
 ("code", r'''
 explicativo = cinco_modelos()["logística"].fit(X[E | V], y[E | V])
 razones = pd.Series(np.«exp»(explicativo[-1].coef_[0]), index=variables).sort_values()        # HUECO 12: la función que convierte un coeficiente en una razón de probabilidades
-razones.plot.barh(figsize=(8, 5.5), color=["#3E7CB1" if r < 1 else "#A8432C" for r in razones]); plt.axvline(1, color="gray")
+razones.plot.barh(figsize=(8, 5.5), color=["#5BC0EB" if r < 1 else "#D7263D" for r in razones]); plt.axvline(1, color="gray")
 plt.xlabel("razón de probabilidades por desviación estándar"); plt.title("Qué acompaña a un siniestro mortal"); plt.show()
 print(razones.round(2).to_string())
 '''),

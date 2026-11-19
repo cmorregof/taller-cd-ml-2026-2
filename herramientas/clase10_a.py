@@ -138,16 +138,16 @@ Miro tres cosas: cuándo ocurrieron los hechos, en cuántas fuentes aparece cada
 ("code", r'''
 fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(15, 3.8))
 por_anio = una.groupby("yy_hecho").agg(documentadas=("menor", "size"), sin_edad=("edad_jep_imputed", "sum"))
-izq.bar(por_anio.index, por_anio["documentadas"], color="#16302B", label="con edad registrada")
-izq.bar(por_anio.index, por_anio["sin_edad"], color="#E0A526", label="sin edad registrada")
+izq.bar(por_anio.index, por_anio["documentadas"], color="#1D4E89", label="con edad registrada")
+izq.bar(por_anio.index, por_anio["sin_edad"], color="#1B998B", label="sin edad registrada")
 izq.set(title="Víctimas documentadas por año del hecho", xlabel=""); izq.legend(fontsize=8)
 
 en_fuentes = una["n_fuentes"].value_counts().sort_index()
-centro.bar(en_fuentes.index, en_fuentes.values, color="#16302B")
+centro.bar(en_fuentes.index, en_fuentes.values, color="#1D4E89")
 centro.set(title="¿En cuántas fuentes aparece cada víctima?", xlabel="número de fuentes")
 
 falta_por_fuentes = una.groupby(una["n_fuentes"].clip(upper=4))["edad_jep_imputed"].mean() * 100
-der.bar(["1", "2", "3", "4 o más"], falta_por_fuentes.values, color="#A8432C")
+der.bar(["1", "2", "3", "4 o más"], falta_por_fuentes.values, color="#D7263D")
 der.set(title="Registros sin edad, según número de fuentes", xlabel="número de fuentes", ylabel="%")
 plt.tight_layout(); plt.show()
 
@@ -179,7 +179,7 @@ imagen = izq.imshow(correlacion, cmap="RdBu_r", vmin=-0.6, vmax=0.6)
 izq.set_xticks(range(len(grandes))); izq.set_yticks(range(len(grandes)))
 izq.set_xticklabels(grandes, rotation=90, fontsize=7); izq.set_yticklabels(grandes, fontsize=7)
 izq.set_title("Correlación entre fuentes"); plt.colorbar(imagen, ax=izq)
-der.scatter(cargas["CP1"], cargas["CP2"], s=una[grandes].sum() / 20, color="#16302B", alpha=0.6)
+der.scatter(cargas["CP1"], cargas["CP2"], s=una[grandes].sum() / 20, color="#1D4E89", alpha=0.6)
 for nombre, (a, b) in cargas.iterrows():
     der.text(a + 0.01, b, nombre, fontsize=8)
 der.axhline(0, color="gray", lw=0.5); der.axvline(0, color="gray", lw=0.5)
@@ -229,9 +229,9 @@ serie = pd.DataFrame([combinar(fila) for fila in por_anio_replica.values], index
 serie["documentada"] = una[una["menor"] & edad_registrada].groupby("yy_hecho").size()
 
 plt.figure(figsize=(11, 3.8))
-plt.fill_between(serie.index, serie["inferior"], serie["superior"], color="#E0A526", alpha=0.5, label="intervalo de 95 % de la imputada")
-plt.plot(serie.index, serie["media"], color="#A8432C", label="imputada")
-plt.plot(serie.index, serie["documentada"], color="#16302B", ls="--", label="documentada (solo con edad registrada)")
+plt.fill_between(serie.index, serie["inferior"], serie["superior"], color="#1B998B", alpha=0.5, label="intervalo de 95 % de la imputada")
+plt.plot(serie.index, serie["media"], color="#D7263D", label="imputada")
+plt.plot(serie.index, serie["documentada"], color="#1D4E89", ls="--", label="documentada (solo con edad registrada)")
 plt.title("Menores de edad reclutados, por año del hecho"); plt.ylabel("víctimas"); plt.legend(fontsize=8); plt.show()
 serie["ancho relativo (%)"] = (serie["superior"] - serie["inferior"]) / serie["media"] * 100
 print("Años con el intervalo más ancho en proporción a su cifra:")
@@ -298,7 +298,7 @@ for nombre, modelo in cinco_modelos().items():
 comparacion = pd.DataFrame(filas).T
 display(comparacion.round(3))
 
-comparacion[["pérdida en validación", "pérdida en prueba"]].sort_values("pérdida en validación", ascending=False).plot.barh(color=["#16302B", "#E0A526"], figsize=(9, 3.6))
+comparacion[["pérdida en validación", "pérdida en prueba"]].sort_values("pérdida en validación", ascending=False).plot.barh(color=["#1D4E89", "#1B998B"], figsize=(9, 3.6))
 plt.title("Pérdida logarítmica: menor es mejor"); plt.show()
 mejor = comparacion.drop(index="misma probabilidad para todos")["pérdida en validación"].idxmin()
 print(f"Ganador en validación: {mejor} | pérdida en prueba {comparacion.loc[mejor, 'pérdida en prueba']:.3f} (línea base {comparacion.iloc[0]['pérdida en prueba']:.3f}) | AUC en prueba {comparacion.loc[mejor, 'AUC en prueba']:.3f}")
@@ -393,7 +393,7 @@ for nombre, columnas in familias.items():
         permutada[:, posiciones] = permutada[azar.permutation(len(valida))][:, posiciones]
         subidas.append(log_loss(y[valida], entrenados[mejor].predict_proba(permutada)[:, 1]) - referencia)
     subida[nombre] = np.mean(subidas)
-pd.Series(subida).sort_values().plot.barh(color="#16302B", figsize=(8, 3.2))
+pd.Series(subida).sort_values().plot.barh(color="#1D4E89", figsize=(8, 3.2))
 plt.title(f"Cuánto sube la pérdida de «{mejor}» al desordenar cada familia de columnas"); plt.show()
 print({n: round(float(v), 4) for n, v in sorted(subida.items(), key=lambda par: -par[1])})
 '''),
@@ -435,17 +435,17 @@ rejilla = fig.add_gridspec(2, 3, height_ratios=[1, 1.5])
 
 titular = fig.add_subplot(rejilla[0, 0]); titular.axis("off")
 titular.text(0, 0.95, "Menores de edad reclutados\nen el conflicto, 1990 a 2017", fontsize=13, weight="bold", va="top")
-titular.text(0, 0.42, f"{imputada['media']:,.0f}".replace(",", "."), fontsize=34, color="#A8432C", weight="bold")
+titular.text(0, 0.42, f"{imputada['media']:,.0f}".replace(",", "."), fontsize=34, color="#D7263D", weight="bold")
 titular.text(0, 0.22, f"víctimas documentadas\nintervalo de 95 %: {imputada['inferior']:,.0f} a {imputada['superior']:,.0f}".replace(",", "."), fontsize=10, va="top")
 
 tres = fig.add_subplot(rejilla[0, 1:])
-tres.barh(["Con edad registrada", "Documentadas, con edad imputada", "Estimadas con subregistro\n(informe del proyecto)"], [documentados, imputada["media"], 32806], color=["#16302B", "#A8432C", "#E0A526"])
+tres.barh(["Con edad registrada", "Documentadas, con edad imputada", "Estimadas con subregistro\n(informe del proyecto)"], [documentados, imputada["media"], 32806], color=["#1D4E89", "#D7263D", "#1B998B"])
 tres.errorbar([imputada["media"], 32806], [1, 2], xerr=[[imputada["media"] - imputada["inferior"], 32806 - 27101], [imputada["superior"] - imputada["media"], 40828 - 32806]], fmt="none", color="black", capsize=4)
 tres.set_title("Tres cifras que no son la misma", fontsize=10); tres.invert_yaxis()
 
 anual = fig.add_subplot(rejilla[1, :2])
-anual.fill_between(serie.index, serie["inferior"], serie["superior"], color="#E0A526", alpha=0.5)
-anual.plot(serie.index, serie["media"], color="#A8432C"); anual.plot(serie.index, serie["documentada"], color="#16302B", ls="--")
+anual.fill_between(serie.index, serie["inferior"], serie["superior"], color="#1B998B", alpha=0.5)
+anual.plot(serie.index, serie["media"], color="#D7263D"); anual.plot(serie.index, serie["documentada"], color="#1D4E89", ls="--")
 anual.set_title("Por año del hecho: imputada con su intervalo (línea continua) y con edad registrada (punteada)", fontsize=10)
 
 nota = fig.add_subplot(rejilla[1, 2]); nota.axis("off")

@@ -102,7 +102,7 @@ def tasa_por(columna, minimo=100):
     return (resumen.assign(mean=resumen["mean"] * 100).rename(columns={"mean": "% con prórroga", "size": "contratos"})).round(1)
 
 display(tasa_por("tipo_de_contrato")); display(tasa_por("modalidad_de_contratacion"))
-(tabla.groupby(tabla["firma"].dt.to_period("Q"))["prorroga"].mean() * 100).plot.bar(color="#16302B", rot=0, figsize=(8, 3))
+(tabla.groupby(tabla["firma"].dt.to_period("Q"))["prorroga"].mean() * 100).plot.bar(color="#1D4E89", rot=0, figsize=(8, 3))
 plt.ylabel("% con prórroga"); plt.title("Prórrogas según el trimestre de firma"); plt.show()
 display(pd.crosstab(tabla["estado_contrato"], tabla["prorroga"]))
 '''),
@@ -335,7 +335,7 @@ filas.append({"examen": "por fecha", **examen(E, P)})
 tres = pd.DataFrame(filas).groupby("examen").mean().loc[["al azar", "por fecha", "por entidad"]]
 print(f"Tiempo: {time.time() - inicio:.0f} s")
 display(tres.round(3))
-tres[[f"logística: P@{AUDITORES}", f"Bayes ingenuo: P@{AUDITORES}", "proporción de prórrogas"]].plot.bar(color=["#A8432C", "#E0A526", "gray"], rot=0, figsize=(9, 3.8))
+tres[[f"logística: P@{AUDITORES}", f"Bayes ingenuo: P@{AUDITORES}", "proporción de prórrogas"]].plot.bar(color=["#D7263D", "#1B998B", "gray"], rot=0, figsize=(9, 3.8))
 plt.ylabel(f"precisión entre los primeros {AUDITORES}"); plt.title("El mismo modelo, tres exámenes"); plt.show()
 '''),
 ("md", r'''
@@ -354,8 +354,8 @@ plt.ylabel(f"precisión entre los primeros {AUDITORES}"); plt.title("El mismo mo
 ''', r'''
 coeficientes = pd.Series(entrenados["logística"].coef_[0], index=terminos).sort_values()
 fig, (izq, der) = plt.subplots(1, 2, figsize=(14, 5.5))
-coeficientes.tail(20).plot.barh(ax=izq, color="#A8432C"); izq.set(title="Empujan hacia «prórroga»", xlabel="coeficiente")
-coeficientes.head(20).iloc[::-1].plot.barh(ax=der, color="#16302B"); der.set(title="Empujan en contra", xlabel="coeficiente")
+coeficientes.tail(20).plot.barh(ax=izq, color="#D7263D"); izq.set(title="Empujan hacia «prórroga»", xlabel="coeficiente")
+coeficientes.head(20).iloc[::-1].plot.barh(ax=der, color="#1D4E89"); der.set(title="Empujan en contra", xlabel="coeficiente")
 plt.tight_layout(); plt.show()
 '''),
 ("md", r'''
@@ -396,8 +396,8 @@ print(f"Con la planilla sin texto: P@{AUDITORES} = {resultados['planilla (sin te
 
 ks = np.arange(10, 501, 10)
 plt.figure(figsize=(8, 3.8))
-plt.plot(ks, [y[P][orden[:k]].mean() for k in ks], color="#A8432C", label=mejor)
-plt.axhline(y[P].mean(), color="gray", ls=":", label="al azar"); plt.axvline(AUDITORES, color="#E0A526", ls="--")
+plt.plot(ks, [y[P][orden[:k]].mean() for k in ks], color="#D7263D", label=mejor)
+plt.axhline(y[P].mean(), color="gray", ls=":", label="al azar"); plt.axvline(AUDITORES, color="#1B998B", ls="--")
 plt.xlabel("contratos revisados (k)"); plt.ylabel("P@k"); plt.title("Precisión entre los primeros k, en la prueba"); plt.legend(); plt.show()
 
 lista = tabla.iloc[elegidos]

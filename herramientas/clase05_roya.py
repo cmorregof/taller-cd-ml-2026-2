@@ -162,7 +162,7 @@ def seis_numeros(ruta):
 colores = np.array([seis_numeros(r) for r in rutas])
 fig, ejes = plt.subplots(1, 3, figsize=(13, 3.5))
 for eje, canal, nombre in zip(ejes, range(3), ["rojo", "verde", "azul"]):
-    for valor, color, etiqueta in [(0, "#16302B", "sana"), (1, "#A8432C", "enferma")]:
+    for valor, color, etiqueta in [(0, "#1D4E89", "sana"), (1, "#D7263D", "enferma")]:
         eje.hist(colores[y == valor, canal], bins=30, alpha=0.6, color=color, density=True, label=etiqueta)
     eje.set(title=f"Promedio del canal {nombre}"); eje.legend()
 plt.tight_layout(); plt.show()
@@ -219,7 +219,7 @@ pca = PCA(n_components=50, random_state=SEMILLA).fit(Z)
 plano = pca.transform(Z)[:, :2]
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 4.5))
-for valor, color, etiqueta in [(0, "#16302B", "sana"), (1, "#A8432C", "enferma")]:
+for valor, color, etiqueta in [(0, "#1D4E89", "sana"), (1, "#D7263D", "enferma")]:
     izq.scatter(plano[y == valor, 0], plano[y == valor, 1], s=6, alpha=0.5, color=color, label=etiqueta)
 izq.set(title="Coloreado por estado", xlabel="CP1", ylabel="CP2"); izq.legend(markerscale=3)
 puntos = der.scatter(plano[:, 0], plano[:, 1], s=6, alpha=0.6, c=tabla["c"], cmap="tab20")
@@ -336,7 +336,7 @@ comparacion = pd.DataFrame(resultados).T
 print(f"Tiempo: {time.time() - inicio:.0f} s")
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 4.5))
-comparacion.sort_values("validación").plot.barh(ax=izq, color=["#16302B", "#E0A526"])
+comparacion.sort_values("validación").plot.barh(ax=izq, color=["#1D4E89", "#1B998B"])
 izq.set(title="AUC: validación para escoger, prueba para reportar", xlabel="AUC", xlim=(0.45, 1))
 for nombre, (fp, vp, _) in curvas.items():
     der.plot(fp, vp, label=f"{nombre} ({comparacion.loc[nombre, 'validación']:.3f})")
@@ -383,8 +383,8 @@ print(f"Tiempo: {time.time() - inicio:.0f} s")
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 4))
 logisticas = [k for k in repeticiones if k.startswith("logística")]
 vecinos_1 = [k for k in repeticiones if k.startswith("1 vecino")]
-repeticiones[logisticas].rename(columns=lambda k: k.split(", ")[1]).plot.box(ax=izq, color="#16302B"); izq.set(title="Regresión logística: AUC en 30 sorteos")
-repeticiones[vecinos_1].rename(columns=lambda k: k.split(", ")[1]).plot.box(ax=der, color="#A8432C"); der.set(title="Un vecino: exactitud en 30 sorteos")
+repeticiones[logisticas].rename(columns=lambda k: k.split(", ")[1]).plot.box(ax=izq, color="#1D4E89"); izq.set(title="Regresión logística: AUC en 30 sorteos")
+repeticiones[vecinos_1].rename(columns=lambda k: k.split(", ")[1]).plot.box(ax=der, color="#D7263D"); der.set(title="Un vecino: exactitud en 30 sorteos")
 plt.tight_layout(); plt.show()
 display(repeticiones.agg(["mean", "std"]).T.round(3))
 '''),
@@ -498,8 +498,8 @@ y se compara con las dos políticas que no necesitan modelo: revisar todo y no r
 grupos = pd.qcut(prob_V, 8, duplicates="drop")
 calibracion = pd.DataFrame({"p": prob_V, "y": y[V]}).groupby(grupos, observed=True).agg(predicha=("p", "mean"), observada=("y", "mean"), hojas=("y", "size"))
 plt.figure(figsize=(4.8, 4.5))
-plt.plot(calibracion["predicha"], calibracion["observada"], "o-", color="#A8432C"); plt.plot([0, 1], [0, 1], color="gray", ls=":")
-plt.axvline(umbral, color="#E0A526", ls="--", label=f"umbral {umbral:.2f}")
+plt.plot(calibracion["predicha"], calibracion["observada"], "o-", color="#D7263D"); plt.plot([0, 1], [0, 1], color="gray", ls=":")
+plt.axvline(umbral, color="#1B998B", ls="--", label=f"umbral {umbral:.2f}")
 plt.xlabel("probabilidad predicha"); plt.ylabel("fracción observada de enfermas"); plt.title("Calibración en validación"); plt.legend(); plt.show()
 display(calibracion.round(2))
 '''),

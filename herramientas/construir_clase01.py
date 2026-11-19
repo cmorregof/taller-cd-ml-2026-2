@@ -20,7 +20,7 @@ Este cuaderno lo resuelvo yo en vivo durante la primera mitad de la clase. Usted
 
 | Ficha | |
 |---|---|
-| **Objetivo pedagógico** | Convertir una pregunta de la vida diaria en un problema de datos con métrica, explorarlo, comparar cinco modelos contra una línea base y validar respetando el tiempo. |
+| **Objetivo pedagógico** | Convertir una pregunta de la vida diaria en un problema de datos con métrica, explorarlo, comparar modelos de aprendizaje automático y de series de tiempo contra una línea base, y validar respetando el tiempo. |
 | **Enfoque** | Ciencia de Datos. |
 | **Resultados de aprendizaje** | 1 (formular el problema, los objetivos y la métrica), 3 (flujo reproducible y trazable), 4 (implementar y evaluar un modelo) y 5 (comunicar a quien no es técnico). |
 | **Uso de IA** | Pueden pedirle a Claude que explique una línea de código o que escriba una gráfica. Deben poder explicar sin ayuda qué es una línea base, por qué no se barajan los meses, por qué el ganador se escoge en validación y qué significa el error que reportan. |
@@ -101,7 +101,7 @@ Ningún mes falta. El costo de la olla es la suma de precio por cantidad.
 costo_por_ingrediente = precios * pd.Series(receta)
 olla = costo_por_ingrediente.sum(axis=1).rename("olla")
 
-ax = olla.plot(color="#A8432C", lw=2)
+ax = olla.plot(color="#D7263D", lw=2)
 ax.set(title="Costo mayorista de una olla de sancocho para seis, Manizales", xlabel="", ylabel="pesos")
 plt.show()
 print(f"Enero de 2013: ${olla.iloc[0]:,.0f} | Diciembre de 2024: ${olla.iloc[-1]:,.0f} | Se multiplicó por {olla.iloc[-1] / olla.iloc[0]:.2f}")
@@ -121,9 +121,20 @@ y la variación mensual de cada precio es
 $$r_{i,t}=\frac{p_{i,t}-p_{i,t-1}}{p_{i,t-1}}.$$
 '''),
 ("code", r'''
-display(precios.describe().round(0))
+ficha = pd.DataFrame({
+    "kilos en la receta": pd.Series(receta),
+    "precio en ene 2013": precios.iloc[0],
+    "precio en dic 2024": precios.iloc[-1],
+    "veces que subió": precios.iloc[-1] / precios.iloc[0],
+    "mínimo": precios.min(),
+    "mediana": precios.median(),
+    "máximo": precios.max(),
+    "meses sin dato": precios.isna().sum(),
+})
+display(ficha.style.format("{:,.0f}").format("{:.2f}", subset=["veces que subió"]).format("{:.1f}", subset=["kilos en la receta"])
+        .background_gradient(subset=["veces que subió"], cmap="Blues").set_caption("Ficha del dato: pesos por kilo, Galería de Manizales"))
 
-ejes = precios.plot(subplots=True, layout=(2, 3), figsize=(12, 5), legend=False, color="#16302B", lw=1.2)
+ejes = precios.plot(subplots=True, layout=(2, 3), figsize=(12, 5), legend=False, color="#1D4E89", lw=1.2)
 for eje, nombre in zip(ejes.ravel(), precios.columns):
     eje.set_title(nombre, fontsize=9); eje.set_xlabel("")
 ejes.ravel()[-1].axis("off")
@@ -133,7 +144,7 @@ plt.suptitle("Precio mayorista por kilo, Manizales"); plt.tight_layout(); plt.sh
 cambios = precios.pct_change().dropna()            # variación mensual de cada ingrediente
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 4))
-(cambios * 100).plot.box(ax=izq, rot=20, color="#16302B")
+(cambios * 100).plot.box(ax=izq, rot=20, color="#1D4E89")
 izq.set(title="Variación mensual por ingrediente", ylabel="%"); izq.tick_params(axis="x", labelsize=7)
 
 correlacion = cambios.corr()
@@ -160,13 +171,13 @@ tendencia = olla.rolling(12, center=True).mean()
 indice_estacional = (olla / tendencia).groupby(olla.index.month).mean()
 
 fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(13, 3.6))
-((indice_estacional - 1) * 100).plot.bar(ax=izq, color="#E0A526")
+((indice_estacional - 1) * 100).plot.bar(ax=izq, color="#1B998B")
 izq.set(title="Temporada: desvío frente a la tendencia", xlabel="mes", ylabel="%")
 
 rezagos = range(1, 25)
-centro.bar(rezagos, [olla.autocorr(k) for k in rezagos], color="#16302B")
+centro.bar(rezagos, [olla.autocorr(k) for k in rezagos], color="#1D4E89")
 centro.set(title="Autocorrelación del costo", xlabel="rezago (meses)")
-der.bar(rezagos, [olla.pct_change().autocorr(k) for k in rezagos], color="#A8432C")
+der.bar(rezagos, [olla.pct_change().autocorr(k) for k in rezagos], color="#D7263D")
 der.axhline(2 / np.sqrt(len(olla)), color="gray", ls=":"); der.axhline(-2 / np.sqrt(len(olla)), color="gray", ls=":")
 der.set(title="Autocorrelación de la variación mensual", xlabel="rezago (meses)")
 plt.tight_layout(); plt.show()
@@ -175,41 +186,140 @@ plt.tight_layout(); plt.show()
 La gráfica del centro dice que el costo de hoy se parece mucho al de los meses anteriores: la serie tiene memoria larga porque tiene tendencia. La de la derecha quita esa tendencia y pregunta algo más fino: si este mes subió, ¿el próximo también? Las líneas punteadas marcan la banda $\pm 2/\sqrt{T}$, dentro de la cual una autocorrelación no se distingue del ruido.
 
 Guarden esta imagen. Las variaciones tienen poca memoria: solo el primer rezago se asoma con claridad por fuera de la banda. Una serie cuyas variaciones no tienen memoria se llama **caminata aleatoria**, $C_{t+1}=C_t+\varepsilon_{t+1}$, y para una caminata aleatoria el mejor pronóstico es el último valor. La olla se le parece bastante, y eso anticipa lo que veremos en la sección 3.
+'''),
+("md", r'''
+### 2.2 Una prueba de hipótesis: ¿es la olla una caminata aleatoria?
 
-### 2.2 PCA: ¿los ingredientes se mueven juntos?
+La gráfica sugiere que sí. Una prueba lo pone en números. La prueba de Dickey-Fuller aumentada ajusta la regresión
 
-El análisis de componentes principales busca las direcciones en que más varían los datos. Tomo la matriz $Z$ de variaciones mensuales estandarizadas, con una columna por ingrediente, y descompongo su matriz de correlaciones:
+$$\Delta c_t=\alpha+\gamma\,c_{t-1}+\sum_{j=1}^{p}\phi_j\,\Delta c_{t-j}+\varepsilon_t,\qquad c_t=\log C_t,$$
+
+y contrasta
+
+$$H_0:\ \gamma=0\quad\text{(raíz unitaria: la serie no regresa a un nivel fijo)}\qquad\text{contra}\qquad H_1:\ \gamma<0.$$
+
+Un valor $p$ pequeño rechaza $H_0$. La aplico dos veces: al nivel de la olla y a sus variaciones mensuales.
+
+**Predicción escrita:** ¿en cuál de las dos se rechazará $H_0$? **Mi apuesta:**
+'''),
+("code", r'''
+from statsmodels.tsa.stattools import adfuller
+
+import warnings
+log_olla = np.log(olla)
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")              # la función avisa de un cambio futuro de formato que no nos afecta
+    p_nivel = adfuller(log_olla)[1]
+    p_variacion = adfuller(log_olla.diff().dropna())[1]
+print(f"Valor p para el nivel de la olla:        {p_nivel:.3f}")
+print(f"Valor p para las variaciones mensuales:  {p_variacion:.4f}")
+'''),
+("md", r'''
+En el nivel no se rechaza la raíz unitaria: la olla no tiene un precio «normal» al que regrese. En las variaciones sí se rechaza, así que los cambios mes a mes son estables. Es la firma de una caminata aleatoria con deriva. No rechazar $H_0$ no la demuestra, pero la deja como la descripción más económica del dato.
+
+La consecuencia práctica es que la cantidad correcta para modelar es el **cambio** y no el nivel. Lo vamos a usar dos veces en la sección 3.
+
+### 2.3 PCA, primera mirada: cada punto es un mes
+
+El análisis de componentes principales busca las direcciones en que más varían los datos. Aquí cada mes es un punto con cinco coordenadas, que son los precios de los cinco ingredientes. Estandarizo los logaritmos de los precios en una matriz $Z$ y descompongo su matriz de correlaciones:
 
 $$R=\frac{1}{T-1}Z^\top Z=V\Lambda V^\top,\qquad \Lambda=\operatorname{diag}(\lambda_1\ge\dots\ge\lambda_5).$$
 
-Las columnas de $V$ son los componentes y $\lambda_j/\sum_k\lambda_k$ es la fracción de la varianza que explica el componente $j$. Si los cinco ingredientes obedecieran a una sola fuerza común, el primer componente explicaría casi todo. Si cada uno va por su lado, la varianza se reparte casi por igual, cerca de $1/5$ por componente.
+Las columnas de $V$ son los componentes, $\lambda_j/\sum_k\lambda_k$ es la fracción de la varianza que explica el componente $j$, y las nuevas coordenadas de cada mes son los **puntajes** $ZV$. Con los dos primeros puntajes se dibuja cada mes en un plano.
 
-**Predicción escrita:** ¿cuánto explicará el primer componente? **Mi apuesta:**
+**Predicción escrita:** si dibujo los 144 meses en ese plano y los coloreo por año, ¿qué figura esperan ver? **Mi apuesta:**
 '''),
 ("code", r'''
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-Z = StandardScaler().fit_transform(cambios)
+Z = StandardScaler().fit_transform(np.log(precios))
 pca = PCA().fit(Z)
+puntajes = pca.transform(Z)
 explicada = pca.explained_variance_ratio_ * 100
-cargas = pd.DataFrame(pca.components_.T, index=cambios.columns, columns=[f"CP{j + 1}" for j in range(5)])
+cargas = pd.DataFrame(pca.components_.T, index=precios.columns, columns=[f"CP{j + 1}" for j in range(5)])
 
-fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 4))
-izq.bar(cargas.columns, explicada, color="#16302B"); izq.axhline(20, color="gray", ls=":")
-izq.set(title="Varianza explicada por componente", ylabel="%")
-for nombre, (x, y) in cargas[["CP1", "CP2"]].iterrows():
-    der.arrow(0, 0, x, y, color="#A8432C", head_width=0.02); der.text(x * 1.08, y * 1.08, nombre[:16], fontsize=8)
-der.axhline(0, color="gray", lw=0.5); der.axvline(0, color="gray", lw=0.5)
-der.set(title="Cargas de los dos primeros componentes", xlabel="CP1", ylabel="CP2", xlim=(-1, 1), ylim=(-1, 1))
+fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(15, 4.3), gridspec_kw={"width_ratios": [1, 1.5, 1.3]})
+izq.bar(cargas.columns, explicada, color="#1D4E89")
+izq.set(title="Varianza explicada", ylabel="%")
+centro.plot(puntajes[:, 0], puntajes[:, 1], color="gray", lw=0.5)
+puntos = centro.scatter(puntajes[:, 0], puntajes[:, 1], c=precios.index.year, cmap="viridis", s=28)
+plt.colorbar(puntos, ax=centro, label="año")
+centro.set(title="Cada punto es un mes", xlabel=f"CP1 ({explicada[0]:.0f} %)", ylabel=f"CP2 ({explicada[1]:.0f} %)")
+cargas[["CP1", "CP2"]].plot.barh(ax=der, color=["#1D4E89", "#D7263D"])
+der.set(title="Cargas: qué mezcla de ingredientes es cada componente"); der.tick_params(axis="y", labelsize=7)
 plt.tight_layout(); plt.show()
-
 print("Varianza explicada (%):", explicada.round(1))
-display(cargas.round(2))
 '''),
 ("md", r'''
-Lean la gráfica de la izquierda contra la línea punteada de 20 %, que es lo que explicaría cada componente si los ingredientes fueran independientes. En la de la derecha, dos flechas que apuntan al mismo lado son ingredientes que suben y bajan juntos, y dos flechas en ángulo recto son ingredientes que no tienen que ver.
+Lean las tres gráficas de izquierda a derecha. El primer componente explica la mayor parte, y sus cargas tienen todas el mismo signo: es el nivel general de precios, lo que uno llamaría inflación de la olla. En el plano, los meses forman un camino que avanza de izquierda a derecha con los años, y hay un tramo donde los puntos se separan de golpe. Búsquenlo y digan en qué año cae.
 
+El segundo componente tiene cargas de signos opuestos. Opone unos ingredientes a otros, así que recoge los meses en que la olla cambia de composición sin cambiar de precio.
+
+### 2.4 PCA, segunda mirada: cada punto es un producto
+
+Ahora le doy la vuelta a la tabla. Tomo todos los productos que la Galería reporta casi todos los meses, y cada **producto** es un punto cuyas coordenadas son sus variaciones mensuales. Dos productos quedan cerca si suben y bajan en los mismos meses.
+
+La pregunta es si los alimentos forman familias, y dónde caen los cinco ingredientes del sancocho. La agrupación por familia que uso para colorear la hice yo a partir del nombre del producto. El PCA no la conoce.
+'''),
+("code", r'''
+todos_los_precios = manizales.pivot_table(index="fecha", columns="producto", values="precio_kg")
+frecuentes = todos_los_precios.loc[:, todos_los_precios.notna().sum() >= 140].interpolate().bfill().ffill()
+variaciones = np.log(frecuentes).diff().dropna()
+
+FRUTAS = ["aguacate", "banano", "coco", "fresa", "guanábana", "guayaba", "kiwi", "limón", "lulo", "mandarina", "mango", "manzana",
+          "maracuyá", "melón", "mora", "naranja", "papaya", "pera", "piña", "tangelo", "tomate de árbol", "uva"]
+VERDURAS = ["ahuyama", "ajo", "apio", "arveja verde en vaina", "berenjena", "brócoli", "cebolla", "chócolo", "cilantro", "coliflor",
+            "espinaca", "fríjol verde", "habichuela", "lechuga", "pepino", "perejil", "pimentón", "remolacha", "repollo", "tomate chonto", "zanahoria"]
+TUBERCULOS = ["papa ", "yuca", "plátano", "arracacha"]
+
+def familia(nombre):
+    n = nombre.lower()
+    if n.startswith("carne de res"): return "carne de res"
+    if n.startswith("carne de cerdo"): return "carne de cerdo"
+    if n.startswith("huevo"): return "huevos"
+    if any(n.startswith(x) for x in FRUTAS): return "frutas"
+    if any(n.startswith(x) for x in TUBERCULOS): return "tubérculos y plátanos"
+    if any(n.startswith(x) for x in VERDURAS): return "verduras y hortalizas"
+    return "abarrotes y otros"
+
+Zp = StandardScaler().fit_transform(variaciones)            # una columna por producto
+pca_productos = PCA(n_components=3).fit(Zp.T)               # al trasponer, cada producto es una fila
+nube = pd.DataFrame(pca_productos.transform(Zp.T), index=frecuentes.columns, columns=["CP1", "CP2", "CP3"])
+nube["familia"] = [familia(p) for p in nube.index]
+
+colores = {"carne de res": "#D7263D", "carne de cerdo": "#F49097", "huevos": "#6C4AB6", "frutas": "#1B998B",
+           "verduras y hortalizas": "#8BC34A", "tubérculos y plátanos": "#1D4E89", "abarrotes y otros": "#9AA5B1"}
+fig, eje = plt.subplots(figsize=(10, 6.5))
+for nombre, grupo in nube.groupby("familia"):
+    eje.scatter(grupo["CP1"], grupo["CP2"], s=45, color=colores[nombre], label=f"{nombre} ({len(grupo)})", alpha=0.85)
+for ingrediente in receta:
+    x, y = nube.loc[ingrediente, ["CP1", "CP2"]]
+    eje.scatter(x, y, s=190, facecolor="none", edgecolor="black", lw=1.6)
+    eje.annotate(ingrediente, (x, y), xytext=(8, 8), textcoords="offset points", fontsize=8, weight="bold")
+var_p = pca_productos.explained_variance_ratio_ * 100
+eje.set(title=f"Cada punto es un producto de la Galería ({len(nube)} productos)", xlabel=f"CP1 ({var_p[0]:.0f} %)", ylabel=f"CP2 ({var_p[1]:.0f} %)")
+eje.legend(fontsize=8, loc="lower left"); plt.show()
+print("Varianza explicada por los tres primeros componentes (%):", var_p.round(1))
+'''),
+("md", r'''
+Nadie le dijo al PCA qué es carne y qué es fruta, y aun así las familias aparecen. Las carnes de res quedan juntas en una esquina, las de cerdo a su lado y los huevos en otra. Las frutas y las verduras se riegan por la parte baja. Los cinco ingredientes del sancocho, marcados con un círculo, caen en zonas distintas. Esa es la versión geométrica de lo que dijo la matriz de correlaciones: cada ingrediente tiene su propia historia, y por eso la olla promedia riesgos en lugar de sumarlos.
+
+Dos advertencias. Los dos primeros componentes explican poca varianza, así que el plano es una sombra de una nube que vive en muchas dimensiones. Y la cercanía en el plano dice que dos productos se mueven parecido, sin decir por qué.
+
+La celda siguiente dibuja la misma nube con el tercer componente. La gráfica se puede girar con el ratón.
+'''),
+("code", r'''
+try:
+    import plotly.express as px
+    figura = px.scatter_3d(nube.reset_index(), x="CP1", y="CP2", z="CP3", color="familia", hover_name="producto",
+                           color_discrete_map=colores, opacity=0.85, height=560, title="Los productos de la Galería en tres componentes")
+    figura.update_traces(marker_size=4); figura.show()
+except ImportError:
+    eje = plt.figure(figsize=(8, 6)).add_subplot(projection="3d")
+    eje.scatter(nube["CP1"], nube["CP2"], nube["CP3"], c=nube["familia"].map(colores)); plt.show()
+'''),
+("md", r'''
 El PCA aquí sirve para describir. No lo vamos a usar como entrada del modelo.
 '''),
 ("md", r'''
@@ -348,7 +458,7 @@ display(pd.concat([bases, errores_nivel]).round(1))
 fechas = datos.index[P] + pd.DateOffset(months=H)
 plt.figure(figsize=(11, 4))
 plt.plot(fechas, datos["real"][P], color="black", lw=2.5, label="real")
-plt.plot(fechas, tabla.loc[datos.index[P], "ingenuo"], color="#E0A526", lw=1.5, label="ingenuo")
+plt.plot(fechas, tabla.loc[datos.index[P], "ingenuo"], color="#1B998B", lw=1.5, label="ingenuo")
 for nombre in pron_nivel:
     plt.plot(fechas, pron_nivel[nombre], lw=1, ls="--", label=nombre)
 plt.axhline(datos["real"][E | V].max(), color="gray", ls=":")
@@ -375,12 +485,124 @@ errores_cambio, pron_cambio = competir(relativas, razon, lambda pred, tramo: pre
 todos = pd.concat([bases,
                    errores_nivel.rename(index=lambda n: n + " (nivel)"),
                    errores_cambio.rename(index=lambda n: n + " (cambio)")])
-todos.sort_values("validación").plot.barh(figsize=(9, 5), color=["#16302B", "#E0A526"])
-plt.xlabel("MAPE (%)"); plt.title("Doce candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
+todos.sort_values("validación").plot.barh(figsize=(9, 5), color=["#1D4E89", "#1B998B"])
+plt.xlabel("MAPE (%)"); plt.title("Doce candidatos, y faltan dos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
 display(todos.sort_values("validación").round(1))
 '''),
 ("md", r'''
-### 3.4 El veredicto
+### 3.4 Modelos hechos para series de tiempo
+
+Los cinco modelos anteriores no saben que los datos están ordenados: reciben una fila y devuelven un número. Hay modelos que parten del orden. Probamos dos clásicos.
+
+**Holt-Winters** descompone la serie en nivel $\ell_t$, tendencia $b_t$ y estación $s_t$, y actualiza cada parte con un suavizado exponencial. Su pronóstico a $h$ pasos es
+
+$$\hat c_{t+h}=\ell_t+(\phi+\phi^2+\dots+\phi^h)\,b_t+s_{t+h-12},$$
+
+donde $\phi<1$ amortigua la tendencia para que no se dispare.
+
+**SARIMA** modela las variaciones. Con $B$ el operador de rezago, $Bc_t=c_{t-1}$, el modelo $(1,1,1)(0,1,1)_{12}$ es
+
+$$(1-\varphi B)(1-B)(1-B^{12})\,c_t=(1+\theta B)(1+\Theta B^{12})\,\varepsilon_t.$$
+
+El factor $(1-B)$ toma la diferencia mensual, que es lo que la prueba de la sección 2.2 pidió. El factor $(1-B^{12})$ quita la estación.
+
+Estos modelos se evalúan con **origen móvil**: para pronosticar desde el mes $t$ se ajustan solo con los datos hasta $t$, y así mes a mes. Es más exigente con el computador y más fiel a como se usarían. La celda tarda cerca de un minuto.
+'''),
+("code", r'''
+import warnings
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+def holt_winters(serie, pasos=H):
+    ajuste = ExponentialSmoothing(np.log(serie), trend="add", damped_trend=True, seasonal="add", seasonal_periods=12).fit()
+    return float(np.exp(ajuste.forecast(pasos).iloc[-1]))
+
+def sarima(serie, pasos=H):
+    ajuste = SARIMAX(np.log(serie), order=(1, 1, 1), seasonal_order=(0, 1, 1, 12)).fit(disp=False)
+    return float(np.exp(ajuste.forecast(pasos).iloc[-1]))
+
+series_de_tiempo = {"Holt-Winters": holt_winters, "SARIMA": sarima}
+olla_m = olla.asfreq("MS")
+pron_series, filas = {}, {}
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    for nombre, metodo in series_de_tiempo.items():
+        desde_cada_mes = pd.Series({t: metodo(olla_m[:t]) for t in datos.index[V | P]})   # origen móvil
+        pron_series[nombre] = desde_cada_mes[datos.index[P]]
+        filas[nombre] = {"validación": mape(datos["real"][V], desde_cada_mes[datos.index[V]]),
+                         "prueba": mape(datos["real"][P], desde_cada_mes[datos.index[P]])}
+pron_series = pd.DataFrame(pron_series)
+todos = pd.concat([todos, pd.DataFrame(filas).T])
+display(todos.loc[["ingenuo", "estacional", "Holt-Winters", "SARIMA"]].round(1))
+'''),
+("code", r'''
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    completo = SARIMAX(np.log(olla_m), order=(1, 1, 1), seasonal_order=(0, 1, 1, 12)).fit(disp=False)
+    futuro = completo.get_forecast(6)
+centro = np.exp(futuro.predicted_mean)
+banda = np.exp(futuro.conf_int(alpha=0.20))
+
+plt.figure(figsize=(11, 4))
+plt.plot(olla_m["2021":], color="#1D4E89", lw=2, label="costo observado")
+plt.plot(np.exp(completo.fittedvalues)["2021":], color="#1B998B", lw=1, ls="--", label="SARIMA, un paso adelante")
+plt.plot(centro, color="#D7263D", lw=2, label="pronóstico a seis meses")
+plt.fill_between(banda.index, banda.iloc[:, 0], banda.iloc[:, 1], color="#D7263D", alpha=0.18, label="franja de 80 %")
+plt.title("El modelo sigue la curva hacia atrás y abre un abanico hacia adelante"); plt.ylabel("pesos"); plt.legend(fontsize=8); plt.show()
+'''),
+("md", r'''
+Esta gráfica tiene una trampa visual que conviene nombrar. La línea punteada va pegada a la curva observada, y uno diría que el modelo es excelente. Pero cada punto de esa línea se calculó conociendo el mes anterior. El pronóstico ingenuo dibujaría una línea igual de pegada, corrida un mes. **Seguir la curva hacia atrás es fácil. Lo que cuesta es el abanico rojo**, que es donde el modelo ya no ve el dato. Miren qué tan ancho se pone en seis meses.
+
+### 3.5 ¿Y una red neuronal?
+
+Ustedes vieron redes recurrentes en Aprendizaje Profundo, así que la pregunta es natural. Una LSTM recibe las doce últimas variaciones mensuales y predice el cambio de los tres meses siguientes.
+
+**Predicción escrita:** ¿le ganará la red al pronóstico ingenuo? ¿Con cuántas filas se entrena? **Mi apuesta:**
+'''),
+("code", r'''
+import torch
+from torch import nn
+
+variacion = np.log(olla).diff().dropna()
+ventanas, respuestas, origenes = [], [], []
+for i in range(12, len(variacion) - H + 1):
+    ventanas.append(variacion.values[i - 12:i]); respuestas.append(variacion.values[i:i + H].sum()); origenes.append(variacion.index[i - 1])
+ventanas = torch.tensor(np.array(ventanas), dtype=torch.float32).unsqueeze(-1) * 10     # se escala para que la red entrene mejor
+respuestas = torch.tensor(np.array(respuestas), dtype=torch.float32) * 10
+origenes = pd.DatetimeIndex(origenes); destino_red = origenes + pd.DateOffset(months=H)
+E_red = destino_red <= pd.Timestamp("2019-12-01")
+V_red = (origenes >= "2020-01-01") & (destino_red <= pd.Timestamp("2021-12-01"))
+P_red = origenes >= "2022-01-01"
+
+class Recurrente(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.lstm, self.salida = nn.LSTM(1, 16, batch_first=True), nn.Linear(16, 1)
+    def forward(self, x):
+        return self.salida(self.lstm(x)[0][:, -1]).squeeze(-1)
+
+resultados = []
+for semilla in range(5):
+    torch.manual_seed(semilla)
+    red = Recurrente(); optimizador = torch.optim.Adam(red.parameters(), lr=0.01, weight_decay=1e-3)
+    for _ in range(300):
+        optimizador.zero_grad(); perdida = ((red(ventanas[E_red]) - respuestas[E_red]) ** 2).mean(); perdida.backward(); optimizador.step()
+    with torch.no_grad():
+        pronostico_red = olla.reindex(origenes).values * np.exp(red(ventanas).numpy() / 10)
+    real_red = olla.reindex(destino_red).values
+    resultados.append({"semilla": semilla, "validación": mape(real_red[V_red], pronostico_red[V_red]), "prueba": mape(real_red[P_red], pronostico_red[P_red])})
+resultados = pd.DataFrame(resultados).set_index("semilla")
+print(f"Filas de entrenamiento: {int(E_red.sum())} | parámetros de la red: {sum(p.numel() for p in red.parameters())}")
+display(resultados.round(1))
+print(f"MAPE promedio de la red en prueba: {resultados['prueba'].mean():.1f} % | ingenuo: {todos.loc['ingenuo', 'prueba']:.1f} %")
+'''),
+("md", r'''
+Comparen el número de filas de entrenamiento con el número de parámetros de la red. Hay muchos más parámetros que datos. La red pierde contra el pronóstico ingenuo, y además cambia de resultado con la semilla, que es otra señal de que no hay dato suficiente para fijarla.
+
+La lección no es que las redes sean malas. Una red recurrente o un *transformer* necesitan miles de series o series muy largas. Con 144 meses de una sola serie, un modelo con tres parámetros como SARIMA tiene ventaja porque trae la estructura puesta de antemano. La red no entra a la competencia por eso: dejarla concursar con cinco semillas sería comprar cinco boletas.
+'''),
+("md", r'''
+### 3.6 El veredicto
 
 La regla quedó fijada antes de mirar: gana quien tenga menor MAPE en **validación**, y su error en **prueba** es el que se le reporta al cliente.
 '''),
@@ -392,18 +614,39 @@ print(f"Su MAPE en prueba: {resumen[mejor]} %   |   MAPE del ingenuo en prueba: 
 
 pronosticos_prueba = pd.concat([tabla.loc[datos.index[P], ["ingenuo", "estacional"]],
                                 pron_nivel.rename(columns=lambda n: n + " (nivel)"),
-                                pron_cambio.rename(columns=lambda n: n + " (cambio)")], axis=1)
+                                pron_cambio.rename(columns=lambda n: n + " (cambio)"), pron_series], axis=1)
 plt.figure(figsize=(11, 3.8))
 plt.plot(fechas, datos["real"][P], color="black", lw=2.5, label="real")
-plt.plot(fechas, pronosticos_prueba["ingenuo"], color="#E0A526", label="ingenuo")
+plt.plot(fechas, pronosticos_prueba["ingenuo"], color="#1B998B", label="ingenuo")
 if mejor != "ingenuo":
-    plt.plot(fechas, pronosticos_prueba[mejor], color="#A8432C", ls="--", label=mejor)
+    plt.plot(fechas, pronosticos_prueba[mejor], color="#D7263D", ls="--", label=mejor)
 plt.title("El ganador contra la línea base"); plt.ylabel("pesos"); plt.legend(); plt.show()
 '''),
 ("md", r'''
 Lean el resultado con calma. Puede pasar que el ganador de validación pierda en prueba contra el pronóstico ingenuo. Eso no es un error del procedimiento: es el procedimiento diciendo la verdad sobre un dato con poca memoria en sus variaciones, como vimos en la sección 2.1. Un modelo que empata con la línea base solo agrega complejidad, y la respuesta honesta para el cliente es la más simple que no pierde.
 
-### 3.5 Explicar: ¿qué ingrediente mueve el costo?
+**¿La diferencia es real?** Dos MAPE separados por medio punto pueden ser la misma cosa. Para cada mes de la prueba tengo el error porcentual absoluto de un candidato, $a_t$, y el del ingenuo, $b_t$. La prueba de rangos con signo de Wilcoxon contrasta
+
+$$H_0:\ \text{la mediana de } a_t-b_t \text{ es } 0\qquad\text{contra}\qquad H_1:\ \text{no lo es}.$$
+'''),
+("code", r'''
+from scipy.stats import wilcoxon
+
+error = lambda metodo: (datos["real"][P] - pronosticos_prueba[metodo]).abs() / datos["real"][P] * 100
+filas_prueba = {}
+for candidato in dict.fromkeys([mejor, "SARIMA", "Holt-Winters", "lineal (cambio)"]):
+    if candidato != "ingenuo":
+        filas_prueba[candidato] = {"MAPE en prueba": error(candidato).mean(), "MAPE del ingenuo": error("ingenuo").mean(),
+                                   "valor p": wilcoxon(error(candidato), error("ingenuo")).pvalue}
+display(pd.DataFrame(filas_prueba).T.round(3))
+print(f"Meses en la prueba: {int(P.sum())}")
+'''),
+("md", r'''
+Lean la columna del valor $p$ con el número de meses al lado. Con tan pocos meses, una ventaja de medio punto no alcanza a distinguirse del azar. La prueba además es generosa, porque los errores de meses vecinos se parecen entre sí y eso hace ver más evidencia de la que hay. La versión cuidadosa de este contraste se llama prueba de Diebold-Mariano.
+
+La conclusión honesta tiene dos partes. Varios modelos quedan por debajo del ingenuo en la prueba, y entre ellos están los dos de series de tiempo. Pero el dato no alcanza para declarar ganador a ninguno.
+
+### 3.7 Explicar: ¿qué ingrediente mueve el costo?
 
 Como el costo es una suma, el alza total se reparte de forma exacta entre ingredientes:
 
@@ -418,7 +661,7 @@ alza = costo_por_ingrediente.iloc[-1] - costo_por_ingrediente.iloc[0]
 print("\nDe cada 100 pesos que subió la olla entre 2013 y 2024, cuántos puso cada ingrediente:")
 print((alza / alza.sum() * 100).round(1).sort_values(ascending=False))
 
-costo_por_ingrediente.plot.area(lw=0, cmap="YlOrBr_r")
+costo_por_ingrediente.plot.area(lw=0, color=PALETA[:5], alpha=0.9)
 plt.title("Costo de la olla por ingrediente"); plt.xlabel(""); plt.ylabel("pesos"); plt.legend(fontsize=8); plt.show()
 '''),
 ("md", r'''
@@ -446,6 +689,8 @@ if elegido == "ingenuo":
     punto = olla.iloc[-1]
 elif elegido == "estacional":
     punto = olla.shift(12 - H).iloc[-1]
+elif elegido in series_de_tiempo:
+    punto = series_de_tiempo[elegido](olla_m)
 else:
     nombre, tipo = elegido.rsplit(" (", 1)
     modelo = cinco_modelos()[nombre]
@@ -482,6 +727,8 @@ Escríbanla para alguien que no sabe qué es una regresión. Una frase para lo q
 | Tres tramos temporales: hasta 2019, 2020 a 2021 y 2022 a 2024 | Separación al azar; escoger mirando la prueba | Al barajar, el modelo ve el futuro; si se escoge en la prueba, la prueba deja de ser examen |
 | Pronosticar el cambio relativo además del nivel | Solo el nivel | Árboles y vecinos no extrapolan por encima de lo visto |
 | Margen con el percentil 90 de los meses de prueba | Intervalo teórico | Sale de errores observados y se explica sin fórmulas |
+| La red neuronal no concursa | Incluirla entre los candidatos | 69 filas de entrenamiento; cinco semillas serían cinco boletas |
+| Familias de productos por nombre, para colorear el PCA | Sin colorear | Ayuda a leer la nube; el PCA no usa la familia |
 
 ### 4.3 Riesgos y mantenimiento
 
@@ -600,7 +847,7 @@ print(horario["Version"].value_counts().sort_index())
 horario["fecha"] = pd.to_datetime(horario["FechaHora"]).dt.normalize()
 precio = horario.groupby("fecha")["Valor"].«mean»().rename("precio")           # HUECO 3: la operación que resume las 24 horas en un promedio
 
-ax = precio.plot(color="#16302B", lw=1)
+ax = precio.plot(color="#1D4E89", lw=1)
 ax.set(title="Precio de bolsa nacional, promedio diario", xlabel="", ylabel="COP/kWh"); plt.show()
 print(precio.describe().round(1))
 '''),
@@ -635,7 +882,7 @@ print(f"Diferencia máxima con el total de XM, en {len(oficial)} días comparabl
 
 datos = pd.concat([precio, embalse], axis=1).dropna()
 print(len(datos), "días, de", datos.index.min().date(), "a", datos.index.max().date())
-datos["embalse"].plot(color="#3E7CB1"); plt.title("Nivel agregado de los embalses (%)"); plt.xlabel(""); plt.show()
+datos["embalse"].plot(color="#5BC0EB"); plt.title("Nivel agregado de los embalses (%)"); plt.xlabel(""); plt.show()
 '''),
 ("md", r'''
 ### 2.4 Conocer el dato antes de modelarlo
@@ -647,17 +894,17 @@ horario["hora"] = pd.to_datetime(horario["FechaHora"]).dt.hour
 dias = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
 
 fig, ejes = plt.subplots(2, 2, figsize=(12, 7))
-horario.groupby("hora")["Valor"].«median»().plot(ax=ejes[0, 0], color="#16302B", marker="o", ms=3)      # HUECO 5: un resumen que no se deje arrastrar por los días extremos
+horario.groupby("hora")["Valor"].«median»().plot(ax=ejes[0, 0], color="#1D4E89", marker="o", ms=3)      # HUECO 5: un resumen que no se deje arrastrar por los días extremos
 ejes[0, 0].set(title="Precio mediano por hora del día", xlabel="hora", ylabel="COP/kWh")
 
 por_dia_semana = datos["precio"].groupby(datos.index.dayofweek).median()
-ejes[0, 1].bar(dias, por_dia_semana.values, color="#E0A526"); ejes[0, 1].set(title="Precio mediano por día de la semana")
+ejes[0, 1].bar(dias, por_dia_semana.values, color="#1B998B"); ejes[0, 1].set(title="Precio mediano por día de la semana")
 
-ejes[1, 0].hist(np.log10(datos["precio"]), bins=40, color="#A8432C")
+ejes[1, 0].hist(np.log10(datos["precio"]), bins=40, color="#D7263D")
 ejes[1, 0].set(title="Distribución del precio diario (escala logarítmica)", xlabel="log10 del precio")
 
 rezagos = range(1, 31)
-ejes[1, 1].bar(rezagos, [datos["precio"].autocorr(k) for k in rezagos], color="#16302B")
+ejes[1, 1].bar(rezagos, [datos["precio"].autocorr(k) for k in rezagos], color="#1D4E89")
 ejes[1, 1].set(title="Autocorrelación del precio diario", xlabel="rezago (días)")
 plt.tight_layout(); plt.show()
 print(f"Media: {datos['precio'].mean():.0f} | Mediana: {datos['precio'].median():.0f} | Máximo: {datos['precio'].max():.0f} COP/kWh")
@@ -691,7 +938,7 @@ cargas = pd.DataFrame(pca.components_.T[:, :2], index=llenado.columns, columns=[
 region = sin_repetir.drop_duplicates("CodigoEmbalse").set_index("CodigoEmbalse")["RegionHidrologica"]
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 4.5))
-izq.bar(range(1, 9), explicada[:«8»], color="#16302B")                                    # HUECO 6: cuántos componentes mostrar para que coincida con el eje
+izq.bar(range(1, 9), explicada[:«8»], color="#1D4E89")                                    # HUECO 6: cuántos componentes mostrar para que coincida con el eje
 izq.set(title="Varianza explicada por componente", xlabel="componente", ylabel="%")
 for nombre_region, grupo in cargas.groupby(region.reindex(cargas.index)):
     der.scatter(grupo["CP1"], grupo["CP2"], label=nombre_region, s=40)
@@ -794,7 +1041,7 @@ for metodo in ["ingenuo", "promedio_7"]:
 todos = pd.DataFrame(errores).T
 pronosticos_prueba = pd.DataFrame(pronosticos)
 
-todos.sort_values("validación").plot.barh(figsize=(9, 4), color=["#16302B", "#E0A526"])
+todos.sort_values("validación").plot.barh(figsize=(9, 4), color=["#1D4E89", "#1B998B"])
 plt.xlabel("MAPE (%)"); plt.title("Siete candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
 display(todos.sort_values("validación").round(1))
 '''),
@@ -810,9 +1057,9 @@ print(f"Su MAPE en prueba: {resumen[mejor]} %   |   MAPE del ingenuo en prueba: 
 fechas = base.index[P] + pd.Timedelta(days=H)
 plt.figure(figsize=(11, 3.8))
 plt.plot(fechas, base["real"][P], color="black", lw=1.5, label="real")
-plt.plot(fechas, pronosticos_prueba["ingenuo"], color="#E0A526", lw=1, label="ingenuo")
+plt.plot(fechas, pronosticos_prueba["ingenuo"], color="#1B998B", lw=1, label="ingenuo")
 if mejor != "ingenuo":
-    plt.plot(fechas, pronosticos_prueba[mejor], color="#A8432C", lw=1, ls="--", label=mejor)
+    plt.plot(fechas, pronosticos_prueba[mejor], color="#D7263D", lw=1, ls="--", label=mejor)
 plt.title(f"Pronóstico a {H} día(s) contra el precio real"); plt.ylabel("COP/kWh"); plt.legend(); plt.show()
 '''),
 ("md", r'''
@@ -833,7 +1080,7 @@ izq.set(xlabel="Nivel agregado de embalses (%)", ylabel="Precio de bolsa (COP/kW
 plt.colorbar(puntos, ax=izq, ticks=sorted(set(datos.index.year)))
 
 modelo_bosque = cinco_modelos()["bosque"].fit(base[variables], razon)
-pd.Series(modelo_bosque.feature_importances_, index=variables).sort_values().plot.barh(ax=der, color="#16302B")
+pd.Series(modelo_bosque.feature_importances_, index=variables).sort_values().plot.barh(ax=der, color="#1D4E89")
 der.set(title="Importancia de cada variable en el bosque aleatorio"); plt.tight_layout(); plt.show()
 
 print("Precio mediano según el nivel de los embalses:")

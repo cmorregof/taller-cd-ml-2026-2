@@ -171,7 +171,7 @@ t = np.arange(X.shape[1]) / FS_ECG
 fig, ejes = plt.subplots(len(mostrar), 2, figsize=(13, 1.5 * len(mostrar) + 1), sharex=True, squeeze=False)
 for columna, (nombre, i) in enumerate(ejemplo.items()):
     for fila, d in enumerate(mostrar):
-        ejes[fila, columna].plot(t, X[i, :, DERIVACIONES_USADAS.index(d)], color="#16302B" if columna == 0 else "#A8432C", lw=0.8)
+        ejes[fila, columna].plot(t, X[i, :, DERIVACIONES_USADAS.index(d)], color="#1D4E89" if columna == 0 else "#D7263D", lw=0.8)
         ejes[fila, columna].set_ylabel(d, rotation=0, labelpad=14)
     ejes[0, columna].set_title(f"Trazo {nombre} (registro {datos.loc[i, 'ecg_id']})")
     ejes[-1, columna].set_xlabel("segundos")
@@ -187,14 +187,14 @@ Antes de modelar miro quiénes son los pacientes de cada grupo, cómo quedaron r
 '''),
 ("code", r'''
 fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(14, 3.8))
-for valor, nombre, color in [(0, "normal", "#16302B"), (1, "con infarto", "#A8432C")]:
+for valor, nombre, color in [(0, "normal", "#1D4E89"), (1, "con infarto", "#D7263D")]:
     izq.hist(datos.loc[y == valor, "edad"], bins=range(0, 96, 5), alpha=0.6, label=nombre, color=color, density=True)
 izq.set(title="Edad por grupo", xlabel="años"); izq.legend()
 
-(datos.groupby("sex")["infarto"].mean() * 100).rename({0: "0 (hombre, inferido)", 1: "1 (mujer, inferido)"}).plot.bar(ax=centro, color="#E0A526", rot=0)
+(datos.groupby("sex")["infarto"].mean() * 100).rename({0: "0 (hombre, inferido)", 1: "1 (mujer, inferido)"}).plot.bar(ax=centro, color="#1B998B", rot=0)
 centro.set(title="Proporción con infarto según sexo", xlabel="", ylabel="%")
 
-(datos.groupby("strat_fold")["infarto"].mean() * 100).plot.bar(ax=der, color="#16302B", rot=0)
+(datos.groupby("strat_fold")["infarto"].mean() * 100).plot.bar(ax=der, color="#1D4E89", rot=0)
 der.set(title="Proporción con infarto por partición", xlabel="strat_fold", ylabel="%")
 plt.tight_layout(); plt.show()
 
@@ -294,11 +294,11 @@ print("Registros sin picos R suficientes:", int(C["rit_fc"].isna().sum()), "| ce
 ("code", r'''
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 3.6))
 izq.plot(t, crudo, color="gray", lw=0.8, label="crudo")
-izq.plot(t, X[ejemplo["con infarto"], :, guia], color="#A8432C", lw=0.9, label="filtrado")
+izq.plot(t, X[ejemplo["con infarto"], :, guia], color="#D7263D", lw=0.9, label="filtrado")
 izq.set(title=f"El filtro, derivación {DERIVACIONES_USADAS[guia]}", xlabel="segundos", ylabel="mV"); izq.legend()
 
 f, P = signal.welch(X[::20, :, guia], fs=FS_ECG, nperseg=256, axis=1)
-for valor, nombre, color in [(0, "normal", "#16302B"), (1, "con infarto", "#A8432C")]:
+for valor, nombre, color in [(0, "normal", "#1D4E89"), (1, "con infarto", "#D7263D")]:
     der.semilogy(f, P[y[::20] == valor].mean(axis=0), color=color, label=nombre)
 for corte in [5, 15, 40]:
     der.axvline(corte, color="gray", ls=":")
@@ -316,7 +316,7 @@ k = (np.arange(70) - 25) / FS_ECG * 1000                             # milisegun
 fig, ejes = plt.subplots(1, len(mostrar), figsize=(2.6 * len(mostrar) + 1, 3.2), squeeze=False)
 for eje, d in zip(ejes[0], mostrar):
     j = DERIVACIONES_USADAS.index(d)
-    for valor, nombre, color in [(0, "normal", "#16302B"), (1, "con infarto", "#A8432C")]:
+    for valor, nombre, color in [(0, "normal", "#1D4E89"), (1, "con infarto", "#D7263D")]:
         eje.plot(k, latidos[y == valor][:, :, j].mean(axis=0), color=color, label=nombre)
     eje.axhline(0, color="gray", lw=0.5); eje.set_title(d); eje.set_xlabel("ms desde el pico R")
 ejes[0, 0].set_ylabel("mV"); ejes[0, 0].legend(fontsize=8)
@@ -353,14 +353,14 @@ for j, d in enumerate(DERIVACIONES_USADAS):
 
 d0 = mostrar[0]
 fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(14, 3.8))
-pd.DataFrame(explicada, index=["CP1", "CP2", "CP3", "CP4"]).T.plot.bar(stacked=True, ax=izq, cmap="YlOrBr_r", width=0.8)
+pd.DataFrame(explicada, index=["CP1", "CP2", "CP3", "CP4"]).T.plot.bar(stacked=True, ax=izq, cmap="Blues_r", width=0.8)
 izq.set(title="Varianza explicada por derivación", ylabel="%"); izq.legend(fontsize=7, ncol=4)
 for c in range(2):
     centro.plot(k, direcciones[d0].components_[c], label=f"CP{c + 1}")
 centro.plot(k, direcciones[d0].mean_, color="gray", ls=":", label="latido medio")
 centro.set(title=f"Los dos primeros componentes, derivación {d0}", xlabel="ms desde el pico R"); centro.legend(fontsize=8)
 muestra = np.random.default_rng(0).choice(np.flatnonzero(E), 3000, replace=False)
-der.scatter(C.loc[muestra, f"lat_cp1_{d0}"], C.loc[muestra, f"lat_cp2_{d0}"], c=np.where(y[muestra] == 1, "#A8432C", "#16302B"), s=5, alpha=0.4)
+der.scatter(C.loc[muestra, f"lat_cp1_{d0}"], C.loc[muestra, f"lat_cp2_{d0}"], c=np.where(y[muestra] == 1, "#D7263D", "#1D4E89"), s=5, alpha=0.4)
 der.set(title=f"3.000 registros de entrenamiento, derivación {d0}\n(rojo: con infarto)", xlabel="CP1", ylabel="CP2")
 plt.tight_layout(); plt.show()
 
@@ -451,7 +451,7 @@ display(comparacion.round(3))
 '''),
 ("code", r'''
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 4))
-comparacion[["validación", "prueba"]].sort_values("validación").plot.barh(ax=izq, color=["#16302B", "#E0A526"])
+comparacion[["validación", "prueba"]].sort_values("validación").plot.barh(ax=izq, color=["#1D4E89", "#1B998B"])
 izq.set(title="AUC: validación para escoger, prueba para reportar", xlim=(0.5, 1), xlabel="AUC")
 
 fp, vp, _ = roc_curve(y[V], base.predict_proba(sin_senal[V])[:, 1]); der.plot(fp, vp, color="gray", ls="--", label="edad y sexo")
@@ -537,9 +537,9 @@ for d in DERIVACIONES_USADAS:
     caida[d] = np.mean(caidas)
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 3.8))
-pd.Series(por_familia).sort_values().plot.barh(ax=izq, color="#16302B")
+pd.Series(por_familia).sort_values().plot.barh(ax=izq, color="#1D4E89")
 izq.axvline(auc_base["validación"], color="gray", ls=":"); izq.set(title=f"AUC en validación de «{mejor}» con una sola familia", xlim=(0.5, 1))
-pd.Series(caida).plot.bar(ax=der, color="#A8432C", rot=0)
+pd.Series(caida).plot.bar(ax=der, color="#D7263D", rot=0)
 der.set(title="Caída del AUC al desordenar cada derivación", ylabel="puntos de AUC")
 plt.tight_layout(); plt.show()
 print("AUC por familia:", {n: round(float(v), 3) for n, v in por_familia.items()})
@@ -591,11 +591,11 @@ print(f"  De cada 100 trazos marcados, tienen infarto: {vpp * 100:.0f}")
 print(f"  La alerta marca el {alerta.mean() * 100:.0f} % de los trazos que llegan; infartos que se le escapan: {int((~alerta & (yp == 1)).sum())} de {int((yp == 1).sum())}")
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 3.6))
-izq.hist(s_prueba[yp == 0], bins=40, alpha=0.6, color="#16302B", label="normal", density=True)
-izq.hist(s_prueba[yp == 1], bins=40, alpha=0.6, color="#A8432C", label="con infarto", density=True)
+izq.hist(s_prueba[yp == 0], bins=40, alpha=0.6, color="#1D4E89", label="normal", density=True)
+izq.hist(s_prueba[yp == 1], bins=40, alpha=0.6, color="#D7263D", label="con infarto", density=True)
 izq.axvline(umbral, color="black", ls="--"); izq.set(title="Puntajes en la prueba y umbral", xlabel="puntaje"); izq.legend()
 fp_p, vp_p, _ = roc_curve(yp, s_prueba)
-der.plot(1 - fp_p, vp_p, color="#16302B"); der.scatter([espe], [sens], color="#A8432C", zorder=3)
+der.plot(1 - fp_p, vp_p, color="#1D4E89"); der.scatter([espe], [sens], color="#D7263D", zorder=3)
 der.set(title="Lo que cuesta cada nivel de sensibilidad (prueba)", xlabel="especificidad", ylabel="sensibilidad")
 plt.tight_layout(); plt.show()
 '''),

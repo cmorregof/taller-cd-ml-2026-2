@@ -209,7 +209,7 @@ print(f"Primer archivo: {primer['hogar'].nunique()} hogares | {primer['kwh'].mea
 print(f"Todos los archivos procesados: {completos['hogar'].nunique()} hogares | {completos['kwh'].mean():.2f} kWh por hogar y día")
 if len(por_archivo):
     print(f"Entre archivos, el promedio va de {por_archivo.min():.2f} a {por_archivo.max():.2f} kWh.")
-    ax = por_archivo.plot.bar(color="#16302B", figsize=(9, 3)); ax.axhline(completos["kwh"].mean(), color="#A8432C")
+    ax = por_archivo.plot.bar(color="#1D4E89", figsize=(9, 3)); ax.axhline(completos["kwh"].mean(), color="#D7263D")
     ax.set(title="Consumo promedio por hogar y día, según el archivo que uno hubiera mirado", xlabel="archivo procesado", ylabel="kWh"); plt.show()
 '''),
 ("md", r'''
@@ -271,8 +271,8 @@ hogares_por_dia = limpio.groupby("fecha")["hogar"].nunique()
 total_por_dia = limpio.groupby("fecha")["kwh"].sum()
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 3.6))
-hogares_por_dia.plot(ax=izq, color="#16302B"); izq.set(title="Hogares con medición completa, por día", xlabel="")
-(total_por_dia / 1000).plot(ax=der, color="#A8432C"); der.set(title="Consumo total de la muestra (MWh por día)", xlabel="")
+hogares_por_dia.plot(ax=izq, color="#1D4E89"); izq.set(title="Hogares con medición completa, por día", xlabel="")
+(total_por_dia / 1000).plot(ax=der, color="#D7263D"); der.set(title="Consumo total de la muestra (MWh por día)", xlabel="")
 plt.tight_layout(); plt.show()
 print(f"Hogares el 15 de enero de 2012: {hogares_por_dia.get(pd.Timestamp('2012-01-15'), 0)} | el 15 de enero de 2013: {hogares_por_dia.get(pd.Timestamp('2013-01-15'), 0)}")
 '''),
@@ -307,19 +307,19 @@ dias = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
 fig, ejes = plt.subplots(2, 2, figsize=(13, 7.5))
 
 por_hogar = limpio.groupby("hogar")["kwh"].mean()
-ejes[0, 0].hist(por_hogar, bins=60, color="#16302B")
-ejes[0, 0].axvline(por_hogar.mean(), color="#A8432C"); ejes[0, 0].axvline(por_hogar.median(), color="#E0A526")
+ejes[0, 0].hist(por_hogar, bins=60, color="#1D4E89")
+ejes[0, 0].axvline(por_hogar.mean(), color="#D7263D"); ejes[0, 0].axvline(por_hogar.median(), color="#1B998B")
 ejes[0, 0].set(title="Consumo promedio de cada hogar (rojo: media; amarillo: mediana)", xlabel="kWh por día", ylabel="hogares")
 
-serie.plot(ax=ejes[0, 1], color="#16302B", lw=1); ejes[0, 1].set(title="Consumo promedio por hogar", xlabel="", ylabel="kWh por día")
+serie.plot(ax=ejes[0, 1], color="#1D4E89", lw=1); ejes[0, 1].set(title="Consumo promedio por hogar", xlabel="", ylabel="kWh por día")
 
 por_dia_semana = serie.groupby(serie.index.dayofweek).mean() / serie.mean() * 100 - 100
-ejes[1, 0].bar(dias, por_dia_semana.values, color="#E0A526"); ejes[1, 0].set(title="Día de la semana: desvío frente al promedio", ylabel="%")
+ejes[1, 0].bar(dias, por_dia_semana.values, color="#1B998B"); ejes[1, 0].set(title="Día de la semana: desvío frente al promedio", ylabel="%")
 
 if perfil is not None:
     en_punto = perfil[perfil["cuenta"] > perfil["cuenta"].max() / 10]            # hay unas pocas lecturas a deshoras, como 15:15: se dejan fuera de la curva
     curva = (en_punto["suma"] / en_punto["cuenta"]).unstack(0)
-    curva.plot(ax=ejes[1, 1], color=["#16302B", "#A8432C"]); ejes[1, 1].set(title="Consumo por media hora, según la tarifa", xlabel="hora", ylabel="kWh por media hora")
+    curva.plot(ax=ejes[1, 1], color=["#1D4E89", "#D7263D"]); ejes[1, 1].set(title="Consumo por media hora, según la tarifa", xlabel="hora", ylabel="kWh por media hora")
 plt.tight_layout(); plt.show()
 print(f"Media por hogar: {por_hogar.mean():.1f} kWh | mediana: {por_hogar.median():.1f} | el 10 % que más consume gasta {por_hogar[por_hogar >= por_hogar.quantile(0.9)].sum() / por_hogar.sum() * 100:.0f} % del total")
 print(f"Mes de mayor consumo: {serie.groupby(serie.index.month).mean().idxmax()} | de menor: {serie.groupby(serie.index.month).mean().idxmin()} | razón entre los dos: {serie.groupby(serie.index.month).mean().max() / serie.groupby(serie.index.month).mean().min():.2f}")
@@ -350,12 +350,12 @@ puntajes_pca = pca.transform(forma - forma.mean())
 
 meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(14, 3.8))
-izq.bar(range(1, 5), explicada, color="#16302B"); izq.set(title="Varianza explicada", xlabel="componente", ylabel="%")
-centro.plot(meses, pca.components_[0], color="#A8432C", marker="o", label="CP1"); centro.plot(meses, pca.components_[1], color="#3E7CB1", marker="o", label="CP2")
+izq.bar(range(1, 5), explicada, color="#1D4E89"); izq.set(title="Varianza explicada", xlabel="componente", ylabel="%")
+centro.plot(meses, pca.components_[0], color="#D7263D", marker="o", label="CP1"); centro.plot(meses, pca.components_[1], color="#5BC0EB", marker="o", label="CP2")
 centro.axhline(0, color="gray", lw=0.5); centro.set(title="Cargas por mes"); centro.legend()
 extremos = np.argsort(puntajes_pca[:, 0])
-der.plot(meses, forma.iloc[extremos[:30]].mean(), color="#3E7CB1", label="30 hogares con CP1 más bajo")
-der.plot(meses, forma.iloc[extremos[-30:]].mean(), color="#A8432C", label="30 hogares con CP1 más alto")
+der.plot(meses, forma.iloc[extremos[:30]].mean(), color="#5BC0EB", label="30 hogares con CP1 más bajo")
+der.plot(meses, forma.iloc[extremos[-30:]].mean(), color="#D7263D", label="30 hogares con CP1 más alto")
 der.axhline(1, color="gray", lw=0.5); der.set(title="Forma del año en los dos extremos", ylabel="consumo del mes / promedio anual"); der.legend(fontsize=8)
 plt.tight_layout(); plt.show()
 print(f"Hogares con 2013 completo: {len(forma)} | El primer componente explica {explicada[0]:.0f} % de la varianza de la forma.")
@@ -451,7 +451,7 @@ for metodo in ["ingenuo", "semanal"]:
 todos = pd.DataFrame(errores).T
 pronosticos_prueba = pd.DataFrame(pronosticos)
 
-todos.sort_values("validación").plot.barh(figsize=(9, 4), color=["#16302B", "#E0A526"])
+todos.sort_values("validación").plot.barh(figsize=(9, 4), color=["#1D4E89", "#1B998B"])
 plt.xlabel("MAPE (%)"); plt.title("Siete candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
 display(todos.sort_values("validación").round(2))
 '''),
@@ -465,9 +465,9 @@ print(f"Su MAPE en prueba: {resumen[mejor]} %   |   MAPE del ingenuo en prueba: 
 fechas = base.index[P] + pd.Timedelta(days=H)
 plt.figure(figsize=(11, 3.8))
 plt.plot(fechas, base["real"][P], color="black", lw=1.8, label="real")
-plt.plot(fechas, pronosticos_prueba["ingenuo"], color="#E0A526", lw=1, label="ingenuo")
+plt.plot(fechas, pronosticos_prueba["ingenuo"], color="#1B998B", lw=1, label="ingenuo")
 if mejor != "ingenuo":
-    plt.plot(fechas, pronosticos_prueba[mejor], color="#A8432C", lw=1.2, ls="--", label=mejor)
+    plt.plot(fechas, pronosticos_prueba[mejor], color="#D7263D", lw=1.2, ls="--", label=mejor)
 plt.title("Pronóstico a un día contra el consumo real, en la prueba"); plt.ylabel("kWh por hogar"); plt.legend(); plt.show()
 
 # El resultado queda amarrado a la versión del dato con que se calculó.
@@ -503,11 +503,11 @@ Dos miradas. La primera es la importancia que el bosque aleatorio le da a cada e
 ("code", r'''
 bosque = cinco_modelos()["bosque"].fit(base[variables], razon)
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 3.8))
-pd.Series(bosque.feature_importances_, index=variables).sort_values().plot.barh(ax=izq, color="#16302B")
+pd.Series(bosque.feature_importances_, index=variables).sort_values().plot.barh(ax=izq, color="#1D4E89")
 izq.set(title="Importancia de cada entrada en el bosque aleatorio")
 
 por_tarifa = limpio.pivot_table(index="fecha", columns="tarifa", values="kwh", aggfunc="mean").rolling(14).mean()
-por_tarifa.plot(ax=der, color=["#16302B", "#A8432C"]); der.axvspan(pd.Timestamp("2013-01-01"), pd.Timestamp("2013-12-31"), color="#E0A526", alpha=0.15)
+por_tarifa.plot(ax=der, color=["#1D4E89", "#D7263D"]); der.axvspan(pd.Timestamp("2013-01-01"), pd.Timestamp("2013-12-31"), color="#1B998B", alpha=0.15)
 der.set(title="Consumo por hogar según la tarifa (promedio de 14 días)", xlabel="", ylabel="kWh por día"); plt.tight_layout(); plt.show()
 
 antes = limpio[limpio["fecha"].dt.year == 2012].groupby("tarifa")["kwh"].mean()
@@ -546,8 +546,8 @@ print(f"Nivel de día alto: {U:.2f} kWh por hogar | días altos en la prueba: {i
 display(decision.round(2))
 
 plt.figure(figsize=(10, 3.6))
-plt.plot(fechas, real, color="black", label="real"); plt.plot(fechas, pronostico, color="#A8432C", ls="--", label=f"pronóstico ({elegido})")
-plt.axhline(U, color="#E0A526", label="nivel de día alto"); plt.ylabel("kWh por hogar"); plt.legend(fontsize=8); plt.title("Días altos en la prueba"); plt.show()
+plt.plot(fechas, real, color="black", label="real"); plt.plot(fechas, pronostico, color="#D7263D", ls="--", label=f"pronóstico ({elegido})")
+plt.axhline(U, color="#1B998B", label="nivel de día alto"); plt.ylabel("kWh por hogar"); plt.legend(fontsize=8); plt.title("Días altos en la prueba"); plt.show()
 '''),
 ("md", r'''
 Lean la tabla de arriba hacia abajo. Cada renglón es una política. Entre los renglones cambian dos columnas en sentido contrario: los días altos que se quedan sin aviso y los avisos en falso. La empresa escoge según cuál error le cuesta más. Un aviso en falso gasta la paciencia del cliente. Un día alto sin aviso le cuesta energía comprada a última hora.
@@ -801,7 +801,7 @@ print(f"Serie: del {lluvia.index.min().date()} al {lluvia.index.max().date()} | 
 display(pd.DataFrame(json.loads((carpeta / "registro.json").read_text(encoding="utf-8"))).query("nombre == @nombre_tabla").tail(4))
 
 medidos_por_mes = lluvia.notna().groupby(lluvia.index.to_period("M")).mean() * 100
-medidos_por_mes.plot(color="#16302B", figsize=(10, 2.8)); plt.title("% de días medidos en cada mes"); plt.xlabel(""); plt.show()
+medidos_por_mes.plot(color="#1D4E89", figsize=(10, 2.8)); plt.title("% de días medidos en cada mes"); plt.xlabel(""); plt.show()
 '''),
 ("md", r'''
 A diferencia de Londres, aquí no interpolamos los días que faltan. Un día sin medición puede haber sido un aguacero, y rellenarlo con el promedio de sus vecinos inventaría una lluvia que nadie midió. Los faltantes se quedan como faltantes.
@@ -837,19 +837,19 @@ Cuatro miradas: cómo se reparte la lluvia diaria, en qué meses llueve, a qué 
 meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 fig, ejes = plt.subplots(2, 2, figsize=(13, 7.5))
 
-ejes[0, 0].hist(lluvia.dropna(), bins=60, color="#16302B"); ejes[0, 0].set_yscale("log")
+ejes[0, 0].hist(lluvia.dropna(), bins=60, color="#1D4E89"); ejes[0, 0].set_yscale("log")
 ejes[0, 0].set(title="Lluvia diaria (eje vertical logarítmico)", xlabel="mm", ylabel="días")
 
 por_mes = lluvia.groupby(lluvia.index.month).mean() * 30
-ejes[0, 1].bar([meses[m - 1] for m in por_mes.index], por_mes.values, color="#3E7CB1"); ejes[0, 1].set(title="Lluvia de un mes típico", ylabel="mm")
+ejes[0, 1].bar([meses[m - 1] for m in por_mes.index], por_mes.values, color="#5BC0EB"); ejes[0, 1].set(title="Lluvia de un mes típico", ylabel="mm")
 
 fechas_completas = set(lluvia_limpia["fecha"])
 horas = por_hora[por_hora["fecha"].isin(fechas_completas)]
-ejes[1, 0].bar(range(24), horas.groupby("hora")["mm"].mean().reindex(range(24)).values, color="#E0A526")
+ejes[1, 0].bar(range(24), horas.groupby("hora")["mm"].mean().reindex(range(24)).values, color="#1B998B")
 ejes[1, 0].set(title="Lluvia promedio por hora del día", xlabel="hora", ylabel="mm")
 
 rezagos = range(1, 15)
-ejes[1, 1].bar(rezagos, [lluvia.autocorr(k) for k in rezagos], color="#A8432C")
+ejes[1, 1].bar(rezagos, [lluvia.autocorr(k) for k in rezagos], color="#D7263D")
 ejes[1, 1].axhline(2 / np.sqrt(lluvia.notna().sum()), color="gray", ls=":")
 ejes[1, 1].set(title="Autocorrelación de la lluvia diaria", xlabel="rezago (días)")
 plt.tight_layout(); plt.show()
@@ -883,8 +883,8 @@ pca = PCA(n_components=4).fit(forma - forma.mean())
 explicada = pca.explained_variance_ratio_ * 100
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 3.8))
-izq.bar(range(1, 5), explicada, color="#16302B"); izq.set(title="Varianza explicada", xlabel="componente", ylabel="%")
-der.plot(range(24), pca.components_[0], color="#A8432C", marker="o", label="CP1"); der.plot(range(24), pca.components_[1], color="#3E7CB1", marker="o", label="CP2")
+izq.bar(range(1, 5), explicada, color="#1D4E89"); izq.set(title="Varianza explicada", xlabel="componente", ylabel="%")
+der.plot(range(24), pca.components_[0], color="#D7263D", marker="o", label="CP1"); der.plot(range(24), pca.components_[1], color="#5BC0EB", marker="o", label="CP2")
 der.axhline(0, color="gray", lw=0.5); der.set(title="Cargas por hora del día", xlabel="hora"); der.legend()
 plt.tight_layout(); plt.show()
 print(f"Días con 5 mm o más: {len(forma)} | Los dos primeros componentes explican {explicada[:2].sum():.0f} % de la varianza.")
@@ -974,7 +974,7 @@ for nombre, modelo in cinco_modelos().items():
     errores[nombre] = {"validación": en_validacion, "prueba": mae(base["real"][P], pronosticos[nombre])}
 todos = pd.DataFrame(errores).T
 
-todos.sort_values("validación").plot.barh(figsize=(9, 4), color=["#16302B", "#E0A526"])
+todos.sort_values("validación").plot.barh(figsize=(9, 4), color=["#1D4E89", "#1B998B"])
 plt.xlabel("MAE (mm)"); plt.title("Siete candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
 display(todos.sort_values("validación").round(2))
 
@@ -1070,9 +1070,9 @@ print(f"Estación {ESTACION} | ventana de {K} día(s) | prueba: {len(despues)} d
 display(decision.round(2))
 
 fig, eje = plt.subplots(figsize=(11, 3.6))
-eje.plot(despues.index, despues["acumulado"], color="#3E7CB1", lw=1, label=f"lluvia acumulada de {K} día(s), hasta ayer")
-eje.scatter(despues.index[despues["evento"] == 1], despues.loc[despues["evento"] == 1, "acumulado"], color="#A8432C", s=18, zorder=3, label="día con movimiento en masa en Caldas")
-eje.axhline(decision.loc[decision["percentil"] == 80, "umbral (mm)"].iloc[0], color="#E0A526", label="umbral del percentil 80")
+eje.plot(despues.index, despues["acumulado"], color="#5BC0EB", lw=1, label=f"lluvia acumulada de {K} día(s), hasta ayer")
+eje.scatter(despues.index[despues["evento"] == 1], despues.loc[despues["evento"] == 1, "acumulado"], color="#D7263D", s=18, zorder=3, label="día con movimiento en masa en Caldas")
+eje.axhline(decision.loc[decision["percentil"] == 80, "umbral (mm)"].iloc[0], color="#1B998B", label="umbral del percentil 80")
 eje.set(ylabel="mm", title="La alerta en la prueba"); eje.legend(fontsize=8); plt.show()
 '''),
 ("md", r'''

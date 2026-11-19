@@ -133,7 +133,7 @@ comparacion_color = pd.DataFrame({
     f"Caldas ({ZONA}), todos": pixeles(carpeta_c, caldas.loc[despejado, "archivo"][::4]).mean(axis=0),
     f"Caldas ({ZONA}), arbolado puro": pixeles(carpeta_c, caldas.loc[puro & (caldas["referencia"] == "arbolado"), "archivo"][:100]).mean(axis=0),
 }, index=["rojo", "verde", "azul"]).T
-comparacion_color.plot.bar(color=["#A8432C", "#3E7D4E", "#5B7DB1"], rot=10, figsize=(10, 3.6))
+comparacion_color.plot.bar(color=["#D7263D", "#3E7D4E", "#5B7DB1"], rot=10, figsize=(10, 3.6))
 plt.ylabel("valor promedio (0 a 255)"); plt.title("Color promedio por canal"); plt.show()
 display(comparacion_color.round(0))
 '''),
@@ -193,7 +193,7 @@ plano_e, plano_c = plano[:len(Xe)], plano[len(Xe):]
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(14, 4.8))
 izq.scatter(plano_e[:, 0], plano_e[:, 1], s=4, alpha=0.3, color="#5B7DB1", label="Europa (EuroSAT)")
-izq.scatter(plano_c[:, 0], plano_c[:, 1], s=4, alpha=0.3, color="#A8432C", label=f"Caldas ({ZONA})")
+izq.scatter(plano_c[:, 0], plano_c[:, 1], s=4, alpha=0.3, color="#D7263D", label=f"Caldas ({ZONA})")
 izq.set(title="Los dos dominios", xlabel="CP1", ylabel="CP2"); izq.legend(markerscale=4)
 for clase, color in zip(sorted(europa["clase"].unique()), plt.cm.tab10.colors):
     cuales = (europa["clase"] == clase).to_numpy()
@@ -260,7 +260,7 @@ for nombre, modelo in cinco_modelos().items():
 comparacion = pd.DataFrame(resultados).T
 print(f"Tiempo: {time.time() - inicio:.0f} s")
 
-comparacion.sort_values("validación").plot.barh(color=["#16302B", "#E0A526"], figsize=(8, 3.6))
+comparacion.sort_values("validación").plot.barh(color=["#1D4E89", "#1B998B"], figsize=(8, 3.6))
 plt.xlabel("exactitud en diez clases"); plt.title("Europa: validación para escoger, prueba para reportar"); plt.show()
 mejor = comparacion.loc[list(cinco_modelos()), "validación"].idxmax()
 ganador = entrenados[mejor]
@@ -349,9 +349,9 @@ mezcla = pd.DataFrame({"Europa (prueba)": pd.Series(logistica.predict(Xe[P])).va
                        f"Caldas ({ZONA})": pd.Series(logistica.predict(Xc[despejado])).value_counts(normalize=True)}).fillna(0) * 100
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(14, 4))
-mezcla.plot.bar(ax=izq, color=["#5B7DB1", "#A8432C"], rot=40); izq.set(title="Qué responde el modelo en cada lugar", ylabel="% de los parches")
+mezcla.plot.bar(ax=izq, color=["#5B7DB1", "#D7263D"], rot=40); izq.set(title="Qué responde el modelo en cada lugar", ylabel="% de los parches")
 der.hist(confianza_e, bins=25, alpha=0.6, color="#5B7DB1", density=True, label="Europa (prueba)")
-der.hist(confianza_c, bins=25, alpha=0.6, color="#A8432C", density=True, label=f"Caldas ({ZONA})")
+der.hist(confianza_c, bins=25, alpha=0.6, color="#D7263D", density=True, label=f"Caldas ({ZONA})")
 der.set(title="Confianza del modelo en su respuesta", xlabel="probabilidad de la clase elegida"); der.legend()
 plt.tight_layout(); plt.show()
 print(f"Confianza mediana: Europa {np.median(confianza_e):.2f} | Caldas {np.median(confianza_c):.2f}")
@@ -444,7 +444,7 @@ print(f"Tiempo: {time.time() - inicio:.0f} s")
 
 plt.figure(figsize=(8, 4))
 plt.plot(resumen.index, resumen["europa_mas_locales"], "o-", color="#5B7DB1", label="Europa + locales")
-plt.errorbar(resumen.index[1:], resumen["solo_locales"][1:], yerr=resumen["desviacion_solo_locales"][1:], fmt="o-", color="#A8432C", capsize=3, label="Solo locales")
+plt.errorbar(resumen.index[1:], resumen["solo_locales"][1:], yerr=resumen["desviacion_solo_locales"][1:], fmt="o-", color="#D7263D", capsize=3, label="Solo locales")
 plt.axhline(1 / len(coberturas), color="gray", ls=":"); plt.text(0, 1 / len(coberturas) + 0.01, "responder siempre lo mismo", fontsize=8, color="gray")
 plt.xlabel("parches locales etiquetados por cobertura (k)"); plt.ylabel("exactitud balanceada en la mitad sur")
 plt.title("¿Cuántas etiquetas de Caldas hacen falta?"); plt.ylim(0, 1); plt.legend(); plt.show()

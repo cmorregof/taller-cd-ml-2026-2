@@ -129,11 +129,11 @@ print(f"Quedan {len(datos)} reseñas | quejas ({UMBRAL_QUEJA} estrellas o menos)
 '''),
 ("code", r'''
 fig, (izq, centro, der) = plt.subplots(1, 3, figsize=(15, 4))
-(datos["estrellas"].value_counts(normalize=True).sort_index() * 100).plot.bar(ax=izq, color="#16302B", rot=0)
+(datos["estrellas"].value_counts(normalize=True).sort_index() * 100).plot.bar(ax=izq, color="#1D4E89", rot=0)
 izq.set(title="Calificaciones", xlabel="estrellas", ylabel="% de las reseñas")
 
 tasa = datos.pivot_table(index="pais", columns="tipo", values="queja", aggfunc="mean") * 100
-imagen = centro.imshow(tasa, cmap="YlOrBr")
+imagen = centro.imshow(tasa, cmap="Blues")
 centro.set_xticks(range(3)); centro.set_xticklabels(tasa.columns); centro.set_yticks(range(3)); centro.set_yticklabels(tasa.index)
 for i in range(3):
     for j in range(3):
@@ -141,7 +141,7 @@ for i in range(3):
 centro.set_title("Proporción de quejas por país y servicio")
 
 datos["palabras"] = datos["texto"].str.split().str.len()
-datos.boxplot(column="palabras", by="estrellas", ax=der, showfliers=False, color="#16302B")
+datos.boxplot(column="palabras", by="estrellas", ax=der, showfliers=False, color="#1D4E89")
 der.set(title="Largo de la reseña según las estrellas", xlabel="estrellas", ylabel="palabras"); plt.suptitle("")
 plt.tight_layout(); plt.show()
 
@@ -307,7 +307,7 @@ for nombre, modelo in cinco_modelos().items():
 comparacion = pd.DataFrame(resultados).T
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(14, 4.5))
-comparacion["AP"].sort_values().plot.barh(ax=izq, color="#16302B"); izq.axvline(y[V].mean(), color="gray", ls=":")
+comparacion["AP"].sort_values().plot.barh(ax=izq, color="#1D4E89"); izq.axvline(y[V].mean(), color="gray", ls=":")
 izq.set(title="Precisión promedio en validación (punteada: ordenar al azar)", xlabel="AP")
 for nombre, (precision, sensibilidad, _) in curvas.items():
     der.plot(sensibilidad, precision, label=f"{nombre} ({comparacion.loc[nombre, 'AP']:.3f})")
@@ -376,8 +376,8 @@ coeficientes = pd.Series(logistica.coef_[0], index=terminos)
 orden = coeficientes.sort_values()
 
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 5.5))
-orden.tail(20).plot.barh(ax=izq, color="#A8432C"); izq.set(title="Empujan hacia «queja»", xlabel="coeficiente")
-orden.head(20).iloc[::-1].plot.barh(ax=der, color="#16302B"); der.set(title="Empujan hacia «no es queja»", xlabel="coeficiente")
+orden.tail(20).plot.barh(ax=izq, color="#D7263D"); izq.set(title="Empujan hacia «queja»", xlabel="coeficiente")
+orden.head(20).iloc[::-1].plot.barh(ax=der, color="#1D4E89"); der.set(title="Empujan hacia «no es queja»", xlabel="coeficiente")
 plt.tight_layout(); plt.show()
 
 def explicar(i, cuantos=6):
@@ -439,7 +439,7 @@ conteo["verdad, IC 95 % inferior"], conteo["verdad, IC 95 % superior"] = bajos, 
 conteo = conteo.sort_values("verdad (%)", ascending=False)
 display(conteo.round(1))
 
-ax = conteo[["verdad (%)", "clasificar y contar (%)", "ajustado (%)"]].plot.bar(color=["black", "#A8432C", "#E0A526"], figsize=(11, 4), rot=25)
+ax = conteo[["verdad (%)", "clasificar y contar (%)", "ajustado (%)"]].plot.bar(color=["black", "#D7263D", "#1B998B"], figsize=(11, 4), rot=25)
 ax.set(title="Proporción de quejas en la prueba: la verdad y dos maneras de estimarla con el modelo", ylabel="%", xlabel=""); plt.show()
 print(f"Error absoluto medio, clasificar y contar: {(conteo['clasificar y contar (%)'] - conteo['verdad (%)']).abs().mean():.2f} puntos")
 print(f"Error absoluto medio, ajustado:            {(conteo['ajustado (%)'] - conteo['verdad (%)']).abs().mean():.2f} puntos")

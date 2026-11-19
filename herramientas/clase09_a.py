@@ -127,11 +127,11 @@ limpias["compresion"] = limpias["palabras"] / limpias["palabras_entradilla"]
 principales = limpias["topic"].value_counts().head(10).index
 
 fig, ejes = plt.subplots(1, 4, figsize=(16, 3.6))
-ejes[0].hist(limpias["palabras"], bins=50, color="#16302B"); ejes[0].set(title="Palabras por noticia")
-ejes[1].hist(limpias["palabras_entradilla"], bins=range(5, 60), color="#E0A526"); ejes[1].set(title="Palabras por entradilla")
-limpias[limpias["topic"].isin(principales)].groupby("topic")["palabras"].median().sort_values().plot.barh(ax=ejes[2], color="#16302B")
+ejes[0].hist(limpias["palabras"], bins=50, color="#1D4E89"); ejes[0].set(title="Palabras por noticia")
+ejes[1].hist(limpias["palabras_entradilla"], bins=range(5, 60), color="#1B998B"); ejes[1].set(title="Palabras por entradilla")
+limpias[limpias["topic"].isin(principales)].groupby("topic")["palabras"].median().sort_values().plot.barh(ax=ejes[2], color="#1D4E89")
 ejes[2].set(title="Mediana de palabras por sección", ylabel=""); ejes[2].tick_params(axis="y", labelsize=7)
-limpias.set_index("fecha").resample("W").size().plot(ax=ejes[3], color="#A8432C"); ejes[3].set(title="Noticias por semana", xlabel="")
+limpias.set_index("fecha").resample("W").size().plot(ax=ejes[3], color="#D7263D"); ejes[3].set(title="Noticias por semana", xlabel="")
 plt.tight_layout(); plt.show()
 
 print("Entradilla: mediana", limpias["palabras_entradilla"].median(), "palabras | a 150 palabras por minuto dura",
@@ -161,7 +161,7 @@ svd = TruncatedSVD(n_components=10, random_state=0)
 Z = svd.fit_transform(tfidf.fit_transform(muestra["text"]))
 
 plt.figure(figsize=(8, 5))
-for tema, color in zip(cinco, ["#A8432C", "#16302B", "#E0A526", "#3B7EA1", "#7B5EA7"]):
+for tema, color in zip(cinco, ["#D7263D", "#1D4E89", "#1B998B", "#3B7EA1", "#7B5EA7"]):
     plt.scatter(Z[muestra["topic"] == tema, 1], Z[muestra["topic"] == tema, 2], s=5, alpha=0.5, color=color, label=tema)
 plt.xlabel("componente 2"); plt.ylabel("componente 3"); plt.legend(fontsize=8, markerscale=3); plt.title("Noticias de cinco secciones en el espacio latente"); plt.show()
 print("Varianza explicada por los diez componentes (%):", (svd.explained_variance_ratio_ * 100).round(1))
@@ -284,9 +284,9 @@ display(tabla.sort_values(("ROUGE-L", "validación"), ascending=False))
 ("code", r'''
 orden = tabla.sort_values(("ROUGE-L", "validación")).index
 fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 3.8))
-tabla["ROUGE-L"].loc[orden, ["validación", "prueba"]].plot.barh(ax=izq, color=["#16302B", "#E0A526"])
+tabla["ROUGE-L"].loc[orden, ["validación", "prueba"]].plot.barh(ax=izq, color=["#1D4E89", "#1B998B"])
 izq.set(title="ROUGE-L contra la entradilla", ylabel="")
-tabla["ROUGE-1"].loc[orden, ["validación", "prueba"]].plot.barh(ax=der, color=["#16302B", "#E0A526"])
+tabla["ROUGE-1"].loc[orden, ["validación", "prueba"]].plot.barh(ax=der, color=["#1D4E89", "#1B998B"])
 der.set(title="ROUGE-1 contra la entradilla", ylabel="")
 plt.tight_layout(); plt.show()
 
@@ -317,7 +317,7 @@ for i, fila in del_tema[V].iterrows():
 posiciones = np.array(posiciones)
 
 plt.figure(figsize=(9, 3.4))
-plt.hist(posiciones, bins=np.arange(0.5, 41.5), color="#16302B")
+plt.hist(posiciones, bins=np.arange(0.5, 41.5), color="#1D4E89")
 plt.xlabel("posición de la frase más parecida a la entradilla"); plt.ylabel("noticias"); plt.title("¿Dónde está el resumen dentro de la noticia?"); plt.show()
 print(f"La mejor frase es la primera en el {np.mean(posiciones == 1) * 100:.0f} % de las noticias, está entre las tres primeras en el {np.mean(posiciones <= 3) * 100:.0f} % y después de la décima en el {np.mean(posiciones > 10) * 100:.0f} %")
 
