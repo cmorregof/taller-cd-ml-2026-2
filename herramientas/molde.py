@@ -17,7 +17,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 
 ARRANQUE = f'''# Celda de arranque. No hay que cambiarle nada: trae las herramientas del curso.
 import pathlib, subprocess, sys
-raiz = next((p for p in [pathlib.Path.cwd(), *pathlib.Path.cwd().parents] if (p / "taller" / "datos.py").exists()), None)
+raiz = next((p for p in [pathlib.Path.cwd(), *pathlib.Path.cwd().parents, pathlib.Path.cwd() / "taller-cd-ml-2026-2"] if (p / "taller" / "datos.py").exists()), None)
 if raiz is None:
     subprocess.run(["git", "clone", "-q", "{REPO}"], check=True)
     raiz = pathlib.Path("taller-cd-ml-2026-2")
