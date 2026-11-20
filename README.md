@@ -5,6 +5,12 @@ Profesor: Carlos Manuel Orrego Franco
 
 Cada clase tiene dos cuadernos. El primero lo resuelve el profesor en vivo. El segundo, su gemelo, lo resuelve cada estudiante con la misma técnica y otros datos. Todos los datos son reales y se descargan de su fuente oficial.
 
+## Documentos del curso
+
+- [Syllabus](documentos/Syllabus_Taller_CD_ML.pdf): lo que veremos, el calendario, la política de IA y la evaluación.
+- [Diapositivas de la clase 1](documentos/Diapositivas_clase01.pdf): presentación del curso y los dos cuadernos del viernes 20 de noviembre. También están [en línea](https://claude.ai/artifact/PyjqENauYaxT9oC4a3Bw9G).
+- [Simulacro de la prueba técnica](documentos/Simulacro_prueba_tecnica.pdf): el ejercicio de veinte minutos del viernes 27 de noviembre.
+
 ## Clases
 
 | # | Fecha | En vivo | Gemelo |
@@ -51,6 +57,7 @@ python pruebas/probar_fuentes.py
 ## Estructura
 
 - `clases/`: los cuadernos, una carpeta por clase.
+- `documentos/`: el syllabus, las diapositivas y el simulacro.
 - `taller/`: el código que descarga y normaliza los datos.
 - `pruebas/`: revisa que las fuentes oficiales sigan respondiendo.
 - `herramientas/`: los programas que generan los cuadernos.
