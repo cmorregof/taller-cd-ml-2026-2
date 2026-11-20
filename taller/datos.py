@@ -11,6 +11,9 @@ La función busca el dato en tres lugares, en este orden:
 2. La fuente oficial, que es el camino normal.
 3. La carpeta `respaldo/`, donde el profesor deja una copia para el salón
    cuando la fuente oficial se cae.
+4. Una copia en línea del profesor (Google Drive), si la ficha del dato la
+   tiene. Sirve en Colab cuando la fuente oficial no atiende a los
+   servidores de Google, como pasa con el DANE.
 
 Cada descarga deja un registro de procedencia (fecha, filas y MD5) en
 `datos/cache/procedencia.json`.
@@ -39,6 +42,8 @@ CATALOGO = {
         "constructor": sipsa.construir,
         # MD5 del CSV normalizado (sin comprimir). La fuente es histórica y no cambia.
         "md5": "4db8e0a7d1befea2502a8ce129d76ca4",
+        # El DANE no atiende a los servidores de Google (error 401 en Colab): ahí se usa esta copia.
+        "respaldo_drive": "1GYEJEveDwYinH2PxgpqMPd_Cb3qzFpgh",
     },
     "xm_precio": {
         "titulo": "XM: precio de bolsa nacional, promedio diario",
@@ -47,6 +52,7 @@ CATALOGO = {
         "licencia": "Datos públicos de XM. Citar a XM como fuente.",
         "constructor": xm.construir_precio,
         "md5": None,  # la fuente se actualiza a diario: el MD5 se registra, no se compara
+        "respaldo_drive": "1ZWRCo4rWfNkWhXXzLahxHaMSnDj3a90-",
     },
     "xm_embalses": {
         "titulo": "XM: nivel agregado de los embalses, diario",
@@ -55,6 +61,7 @@ CATALOGO = {
         "licencia": "Datos públicos de XM. Citar a XM como fuente.",
         "constructor": xm.construir_embalses,
         "md5": None,
+        "respaldo_drive": "1WcsxPvZAob12vKV0OmWHBgUbDAOhVmCT",
     },
 }
 
@@ -90,6 +97,23 @@ def _registrar(nombre: str, tabla: pd.DataFrame, origen: str, clave: str | None 
     archivo.write_text(json.dumps(registro, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def _bajar_respaldo(identificador: str, destino: Path) -> bool:
+    """Baja la copia del profesor desde Google Drive. Devuelve True si quedó guardada."""
+    import requests
+
+    url = f"https://drive.google.com/uc?export=download&id={identificador}"
+    try:
+        respuesta = requests.get(url, timeout=120)
+        respuesta.raise_for_status()
+        if respuesta.content[:2] != b"\x1f\x8b":   # un .gz empieza así; si no, Drive devolvió otra cosa
+            return False
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_bytes(respuesta.content)
+        return True
+    except Exception:
+        return False
+
+
 def procedencia() -> dict:
     """Devuelve el registro de lo descargado en esta sesión."""
     archivo = CACHE / "procedencia.json"
@@ -119,13 +143,16 @@ def descargar(nombre: str, forzar: bool = False, **opciones) -> pd.DataFrame:
         tabla = ficha["constructor"](**opciones)
         origen = "fuente oficial"
     except Exception as error:  # la red falla de muchas maneras: se informa y se sigue
+        if not en_respaldo.exists() and ficha.get("respaldo_drive") and not opciones:
+            print(f"[{nombre}] Bajo la copia del profesor desde Google Drive.")
+            _bajar_respaldo(ficha["respaldo_drive"], en_respaldo)
         if not en_respaldo.exists():
             raise RuntimeError(
                 f"No pude descargar «{nombre}» de {ficha['fuente']} y no hay copia en la "
                 f"carpeta respaldo/. Revisa la conexión y vuelve a correr la celda. "
                 f"Si sigue fallando, avísale al profesor. Detalle técnico: {error!r}"
             ) from error
-        print(f"[{nombre}] La fuente oficial no respondió ({type(error).__name__}). Uso la copia de respaldo.")
+        print(f"[{nombre}] Uso la copia de respaldo. La fuente oficial no respondió ({type(error).__name__}).")
         tabla = pd.read_csv(en_respaldo)
         origen = "copia de respaldo"
 
