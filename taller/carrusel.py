@@ -142,6 +142,27 @@ def lamina_pares(tabla, columnas: list, colores: list, etiqueta: str, titular: s
     return fig
 
 
+def lamina_ranking(valores, etiqueta: str, titular: str, bajada: str, pie: str, pagina: str,
+                   ruta: str | None = None, resaltar: list | None = None, sufijo: str = " %"):
+    """Barras horizontales de una sola serie, ordenadas, con el valor al final. `resaltar` pinta algunas en rojo."""
+    fig, ax = _lienzo(etiqueta, titular, bajada, pie, pagina, izquierda=0.24)
+    resaltar = resaltar or []
+    colores = [ROJO if n in resaltar else AZUL for n in valores.index]
+    ax.barh(range(len(valores)), valores.values, color=colores, height=0.62)
+    for i, v in enumerate(valores.values):
+        ax.text(v + valores.max() * 0.015, i, f"{v:.0f}{sufijo}", va="center", fontsize=18, family=COND,
+                weight="semibold", color="#3A3A3A")
+    ax.set_yticks(range(len(valores)))
+    ax.set_yticklabels(valores.index, fontsize=20)
+    ax.set_xticks([])
+    ax.grid(False)
+    ax.spines["bottom"].set_visible(False)
+    _fuente_ejes(ax)
+    if ruta:
+        fig.savefig(ruta, dpi=100, facecolor=FONDO)
+    return fig
+
+
 def lamina_texto(etiqueta: str, titular: str, puntos: list, pie: str, pagina: str, ruta: str | None = None):
     """Lámina de cierre: un titular y tres o cuatro líneas de método."""
     fig = plt.figure(figsize=(10.8, 13.5), dpi=100, facecolor=FONDO)
