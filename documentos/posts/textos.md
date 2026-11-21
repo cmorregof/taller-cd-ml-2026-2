@@ -4,9 +4,9 @@ Un post diario, en ciclos de dos en español y uno en inglés. Cada post sale de
 
 | Día | Post | Idioma | Carrusel | Estado |
 |---|---|---|---|---|
-| Sáb 21 nov, 8:00 | El IPC del sancocho | español | `../post_sancocho/carrusel_indice_del_sancocho.pdf` | programado con el texto anterior |
-| Dom 22 nov | ¿Quién se queda atrás en el ICFES? | español | `carrusel_la_brecha_del_icfes.pdf` (8 láminas, datos de 2022) | listo para programar |
-| Lun 23 nov | Can you predict tomorrow's price of electricity? | inglés | `carousel_colombia_power_price.pdf` (6 láminas) | listo para programar |
+| Sáb 21 nov, 8:00 | El IPC del sancocho | español | `../post_sancocho/carrusel_indice_del_sancocho.pdf` | publicado, con el texto anterior |
+| Sáb 21 nov, 11:07 | Can you predict tomorrow's price of electricity? | inglés | `carousel_colombia_power_price.pdf` (6 láminas) | publicado |
+| Dom 22 nov, 10:00 | ¿Quién se queda atrás en el ICFES? | español | `carrusel_la_brecha_del_icfes.pdf` (8 láminas, datos de 2022) | programado |
 
 ---
 
@@ -64,7 +64,7 @@ Notas: los datos son el periodo 20224 de datos.gov.co `kgxf-xxbe` (cuaderno `pos
 
 ---
 
-## Lun 23 nov · Can you predict tomorrow's price of electricity?
+## Sáb 21 nov, 11:07 · Can you predict tomorrow's price of electricity?
 
 Document title on LinkedIn: **Colombia's power price, 2023 to 2026**
 
