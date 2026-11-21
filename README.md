@@ -5,17 +5,27 @@ Profesor: Carlos Manuel Orrego Franco
 
 Cada clase tiene dos cuadernos. El primero lo resuelve el profesor en vivo. El segundo, su gemelo, lo resuelve cada estudiante con la misma técnica y otros datos. Todos los datos son reales y se descargan de su fuente oficial.
 
+## Hoy, sábado 21 de noviembre
+
+1. **El IPC del sancocho**, en vivo. Un índice de precios al estilo del IPC con una sola canasta, datos faltantes e imputación, y un post de LinkedIn al final.
+   [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/01_formular/01c_el_ipc_del_sancocho.ipynb)
+2. **El precio de la luz**, lo resuelve cada estudiante y termina en su propio post. Corran la descarga apenas abran el cuaderno, porque tarda unos doce minutos.
+   [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/01_formular/01b_el_precio_de_la_luz.ipynb)
+3. **El ICFES**, si alcanza el tiempo.
+   [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/02_limpieza/02a_el_icfes.ipynb)
+
 ## Documentos del curso
 
 - [Syllabus](documentos/Syllabus_Taller_CD_ML.pdf): lo que veremos, el calendario, la política de IA y la evaluación.
 - [Diapositivas de la clase 1](documentos/Diapositivas_clase01.pdf): presentación del curso y los dos cuadernos del viernes 20 de noviembre. También están [en línea](https://claude.ai/artifact/PyjqENauYaxT9oC4a3Bw9G).
 - [Simulacro de la prueba técnica](documentos/Simulacro_prueba_tecnica.pdf): el ejercicio de veinte minutos del viernes 27 de noviembre.
+- [Posts de LinkedIn](documentos/posts/textos.md): el calendario, los textos y los carruseles que salen de los cuadernos. El del sancocho está en [documentos/post_sancocho](documentos/post_sancocho/carrusel_indice_del_sancocho.pdf).
 
 ## Clases
 
 | # | Fecha | En vivo | Gemelo |
 |---|---|---|---|
-| 1 | Vie 20 nov | [El sancocho](clases/01_formular/01a_el_sancocho.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/01_formular/01a_el_sancocho.ipynb) | [El precio de la luz](clases/01_formular/01b_el_precio_de_la_luz.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/01_formular/01b_el_precio_de_la_luz.ipynb) |
+| 1 | Vie 20 nov | [El IPC del sancocho](clases/01_formular/01c_el_ipc_del_sancocho.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/01_formular/01c_el_ipc_del_sancocho.ipynb)<br>Versión anterior: [El sancocho](clases/01_formular/01a_el_sancocho.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/01_formular/01a_el_sancocho.ipynb) | [El precio de la luz](clases/01_formular/01b_el_precio_de_la_luz.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/01_formular/01b_el_precio_de_la_luz.ipynb) |
 | 2 | Sáb 21 nov | [El ICFES](clases/02_limpieza/02a_el_icfes.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/02_limpieza/02a_el_icfes.ipynb) | [Dengue](clases/02_limpieza/02b_dengue.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/02_limpieza/02b_dengue.ipynb) |
 | 3 | Mar 24 nov | [La factura de Londres](clases/03_datos_grandes/03a_la_factura_de_londres.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/03_datos_grandes/03a_la_factura_de_londres.ipynb) | [El cielo de Caldas](clases/03_datos_grandes/03b_el_cielo_de_caldas.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/03_datos_grandes/03b_el_cielo_de_caldas.ipynb) |
 | 4 | Vie 27 nov | [El Mundial de Qatar](clases/04_desbalance/04a_el_mundial_de_qatar.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/04_desbalance/04a_el_mundial_de_qatar.ipynb) | [Las calles de Bogotá](clases/04_desbalance/04b_las_calles_de_bogota.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/04_desbalance/04b_las_calles_de_bogota.ipynb) |
@@ -57,7 +67,7 @@ python pruebas/probar_fuentes.py
 ## Estructura
 
 - `clases/`: los cuadernos, una carpeta por clase.
-- `documentos/`: el syllabus, las diapositivas y el simulacro.
+- `documentos/`: el syllabus, las diapositivas, el simulacro y los posts de LinkedIn.
 - `taller/`: el código que descarga y normaliza los datos.
 - `pruebas/`: revisa que las fuentes oficiales sigan respondiendo.
 - `herramientas/`: los programas que generan los cuadernos.
