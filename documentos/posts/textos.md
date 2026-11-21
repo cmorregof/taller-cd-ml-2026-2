@@ -54,13 +54,13 @@ Después le pedí a un modelo de aprendizaje automático que repartiera cupos de
 
 Al auditarlo por jornada vimos cómo los encontraba. En esos colegios de prueba, le dio cupo a todos los estudiantes de jornada nocturna o sabatina. En esas jornadas se queda atrás el 52,2 %, y la mediana de edad es 20 años, frente a 17 en la diurna. En la jornada diurna, en cambio, solo alcanzó al 35 % de quienes lo necesitaban. El modelo aprendió a reconocer la jornada, y la mayoría de los estudiantes diurnos que iban a quedarse atrás se quedó sin cupo.
 
-Lo trabajamos en clase en la Especialización en Estadística de la Universidad Nacional, sede Manizales. El código de este análisis está en el repositorio del curso: https://github.com/cmorregof/taller-cd-ml-2026-2
+Lo trabajamos en clase en la Especialización en Estadística de la Universidad Nacional, sede Manizales. El cuaderno, que reproduce cada cifra en Colab: https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/posts/la_brecha_del_icfes_2022.ipynb
 
 ¿Cómo repartirían ustedes esos cupos?
 
 #CienciaDeDatos #Educación #ICFES #Caldas #Colombia
 
-Notas: los datos son el periodo 20224 de datos.gov.co `kgxf-xxbe` (guion `herramientas/posts/laminas_icfes_2022.py`). Las cifras de 2020 salen del cuaderno de clase (`rnvb-vnyh`, percentil del ICFES). El cuaderno de clase sigue con 2020. Se pidió acceso a DataIcfes el 21 de noviembre para comparar con 2024.
+Notas: los datos son el periodo 20224 de datos.gov.co `kgxf-xxbe` (cuaderno `posts/la_brecha_del_icfes_2022.ipynb`; láminas con `herramientas/posts/laminas_icfes_2022.py`). Las cifras de 2020 salen del cuaderno de clase (`rnvb-vnyh`, percentil del ICFES). El cuaderno de clase sigue con 2020. Se pidió acceso a DataIcfes el 21 de noviembre para comparar con 2024.
 
 ---
 

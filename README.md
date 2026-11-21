@@ -20,6 +20,7 @@ Cada clase tiene dos cuadernos. El primero lo resuelve el profesor en vivo. El s
 - [Diapositivas de la clase 1](documentos/Diapositivas_clase01.pdf): presentación del curso y los dos cuadernos del viernes 20 de noviembre. También están [en línea](https://claude.ai/artifact/PyjqENauYaxT9oC4a3Bw9G).
 - [Simulacro de la prueba técnica](documentos/Simulacro_prueba_tecnica.pdf): el ejercicio de veinte minutos del viernes 27 de noviembre.
 - [Posts de LinkedIn](documentos/posts/textos.md): el calendario, los textos y los carruseles que salen de los cuadernos. El del sancocho está en [documentos/post_sancocho](documentos/post_sancocho/carrusel_indice_del_sancocho.pdf).
+- [¿Quién se queda atrás en el ICFES? Caldas, 2022](posts/la_brecha_del_icfes_2022.ipynb) [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/posts/la_brecha_del_icfes_2022.ipynb): el cuaderno del post del ICFES.
 
 ## Clases
 
@@ -68,6 +69,7 @@ python pruebas/probar_fuentes.py
 
 - `clases/`: los cuadernos, una carpeta por clase.
 - `documentos/`: el syllabus, las diapositivas, el simulacro y los posts de LinkedIn.
+- `posts/`: los cuadernos que acompañan los posts y reproducen sus cifras.
 - `taller/`: el código que descarga y normaliza los datos.
 - `pruebas/`: revisa que las fuentes oficiales sigan respondiendo.
 - `herramientas/`: los programas que generan los cuadernos.
