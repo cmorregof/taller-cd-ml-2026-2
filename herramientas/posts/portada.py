@@ -46,10 +46,10 @@ def portada(foto, salida, etiqueta, contexto, lineas, bajada, firma, fuente, des
 
 PORTADAS = {
     "icfes": dict(foto="documentos/posts/fotos/icfes_aula.png", salida="documentos/posts/icfes_01_portada.png",
-                  etiqueta="SABER 11 EN CALDAS", contexto="9.941 estudiantes, 2020",
+                  etiqueta="SABER 11 EN CALDAS", contexto="9.932 estudiantes, 2022",
                   lineas=["¿Quién se queda", "atrás en el ICFES?"],
                   bajada=["La familia, la zona del colegio y un", "modelo que reparte cupos de refuerzo"],
-                  firma="Carlos Manuel Orrego Franco", fuente="Datos: ICFES, Saber 11 2020-2", desliza="Desliza  →", velo=640),
+                  firma="Carlos Manuel Orrego Franco", fuente="Datos: ICFES, Saber 11 2022", desliza="Desliza  →", velo=640),
     "luz": dict(foto="documentos/posts/fotos/luz_embalse.png", salida="documentos/posts/luz_01_cover.png",
                 etiqueta="COLOMBIA'S POWER MARKET", contexto="2023 to 2026",
                 lineas=["Can you predict", "tomorrow's price", "of electricity?"],

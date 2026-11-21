@@ -5,7 +5,7 @@ Un post diario, en ciclos de dos en español y uno en inglés. Cada post sale de
 | Día | Post | Idioma | Carrusel | Estado |
 |---|---|---|---|---|
 | Sáb 21 nov, 8:00 | El IPC del sancocho | español | `../post_sancocho/carrusel_indice_del_sancocho.pdf` | programado con el texto anterior |
-| Dom 22 nov | ¿Quién se queda atrás en el ICFES? | español | `carrusel_la_brecha_del_icfes.pdf` (7 láminas) | listo para programar |
+| Dom 22 nov | ¿Quién se queda atrás en el ICFES? | español | `carrusel_la_brecha_del_icfes.pdf` (8 láminas, datos de 2022) | listo para programar |
 | Lun 23 nov | Can you predict tomorrow's price of electricity? | inglés | `carousel_colombia_power_price.pdf` (6 láminas) | listo para programar |
 
 ---
@@ -40,23 +40,27 @@ Nota: el IPC de alimentos de Manizales tiene huecos en 2016, rellenos con la var
 
 Título del documento en LinkedIn: **La brecha del ICFES en Caldas**
 
-En Caldas, un estudiante de colegio rural cuya madre es profesional se queda atrás en el ICFES tan a menudo como un estudiante urbano cuya madre solo hizo primaria. En los dos casos le pasa a uno de cada tres.
+En los colegios rurales de Caldas, uno de cada tres estudiantes se queda atrás en el ICFES. En los urbanos, menos de uno de cada cinco.
 
-Analicé los resultados de Saber 11 de 2020 que publica el ICFES para los 9.941 estudiantes de grado once de Caldas. Comparé cada puntaje con los de todo el país. Digo que un estudiante "se queda atrás" cuando su puntaje está entre el 25 % más bajo de Colombia. Cuento como profesional a la madre que llegó a la universidad, terminara o no, o que hizo un posgrado.
+Analicé los resultados de Saber 11 de 2022 que publica el ICFES en datos.gov.co para los 9.932 estudiantes de grado once de Caldas. Digo que un estudiante "se queda atrás" cuando su puntaje global es de 209 o menos, que es el 25 % más bajo del país. Calculé ese umbral con los resultados de todo Colombia, porque la tabla no trae el percentil. Antes hubo que limpiar una trampa: cada estudiante aparecía dos veces.
 
-En los colegios urbanos, la educación de la madre marca una distancia grande. Si la madre es profesional, se queda atrás el 8,4 %. Si solo hizo primaria o no estudió, la cifra sube a 33,3 %. En los colegios rurales esa ventaja casi desaparece. Se queda atrás el 33,3 % de los hijos de madres profesionales y el 39,6 % de los hijos de madres con primaria o menos. El dato rural de madres profesionales sale de solo 72 estudiantes, así que hay que leerlo con cuidado.
+En la ciudad, la educación de la madre marca una distancia grande. Se queda atrás el 31,0 % de los hijos de madres que solo hicieron primaria o no estudiaron, y el 7,7 % de los hijos de madres profesionales. En el campo las dos cifras suben, al 36,0 % y al 16,5 %. Cuento como profesional a la madre que llegó a la universidad, terminara o no, o que hizo un posgrado.
 
-Lo rural junta varias desventajas en el mismo estudiante. Solo el 32,1 % de los estudiantes rurales tiene internet en casa, frente al 78,6 % de los urbanos. Además, el 55,3 % tiene una madre que estudió como mucho primaria, mientras que en la ciudad es el 24,8 %.
+Lo rural junta varias desventajas en el mismo estudiante. El 40,8 % de los estudiantes rurales tiene internet en casa, frente al 79,0 % de los urbanos. Además, el 49,0 % tiene una madre que estudió como mucho primaria, mientras que en la ciudad es el 21,1 %.
 
-Después le pedí a un modelo de aprendizaje automático que repartiera cupos de refuerzo para uno de cada cuatro estudiantes, solo con lo que se sabe al inscribirse. El modelo encontró al 48 % de los que iban a quedarse atrás. Un sorteo encuentra al 25 %, y repartir según la educación de la madre, al 39 %.
+Primero hice el análisis con 2020 y apareció un dato llamativo. Ese año, en los colegios rurales, se quedaba atrás el 33,3 % de los hijos de madres profesionales, casi tanto como el resto. En 2022 esa cifra bajó a 16,5 %. No sé cuánto de la diferencia viene de la pandemia y cuánto del azar, porque son grupos de 72 y 97 estudiantes. Por eso no construí el post sobre ese dato.
 
-Al auditarlo por grupos vimos dónde los encontraba. Le dio cupo al 81 % de los estudiantes de jornada nocturna o sabatina, y allí alcanzó al 88 % de los que lo necesitaban. En la jornada diurna solo alcanzó al 31 %. Los estudiantes nocturnos y sabatinos son mayores: su mediana de edad es 20 años y el 43 % pasa de 20, mientras que en la diurna la mediana es 17. El modelo aprendió a reconocer la jornada, y la mayoría de los estudiantes diurnos que iban a quedarse atrás se quedó sin cupo.
+Después le pedí a un modelo de aprendizaje automático que repartiera cupos de refuerzo para uno de cada cuatro estudiantes, solo con lo que se sabe al inscribirse. En colegios que no vio al entrenar, encontró al 52 % de los que iban a quedarse atrás. Un sorteo encuentra al 23 %, y repartir según la educación de la madre, al 36 %.
 
-Lo trabajamos en clase en la Especialización en Estadística de la Universidad Nacional, sede Manizales. El cuaderno, con el código y los datos: https://colab.research.google.com/github/cmorregof/taller-cd-ml-2026-2/blob/main/clases/02_limpieza/02a_el_icfes.ipynb
+Al auditarlo por jornada vimos cómo los encontraba. En esos colegios de prueba, le dio cupo a todos los estudiantes de jornada nocturna o sabatina. En esas jornadas se queda atrás el 52,2 %, y la mediana de edad es 20 años, frente a 17 en la diurna. En la jornada diurna, en cambio, solo alcanzó al 35 % de quienes lo necesitaban. El modelo aprendió a reconocer la jornada, y la mayoría de los estudiantes diurnos que iban a quedarse atrás se quedó sin cupo.
+
+Lo trabajamos en clase en la Especialización en Estadística de la Universidad Nacional, sede Manizales. El código de este análisis está en el repositorio del curso: https://github.com/cmorregof/taller-cd-ml-2026-2
 
 ¿Cómo repartirían ustedes esos cupos?
 
 #CienciaDeDatos #Educación #ICFES #Caldas #Colombia
+
+Notas: los datos son el periodo 20224 de datos.gov.co `kgxf-xxbe` (guion `herramientas/posts/laminas_icfes_2022.py`). Las cifras de 2020 salen del cuaderno de clase (`rnvb-vnyh`, percentil del ICFES). El cuaderno de clase sigue con 2020. Se pidió acceso a DataIcfes el 21 de noviembre para comparar con 2024.
 
 ---
 
