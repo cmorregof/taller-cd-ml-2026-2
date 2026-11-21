@@ -208,6 +208,25 @@ def construir_emergencias(departamento: str = "CALDAS") -> pd.DataFrame:
     return pd.concat(partes, ignore_index=True)
 
 
+# Copias del profesor en Google Drive, congeladas el 21 de noviembre de 2026. Se usan solo si la fuente oficial falla.
+RESPALDO_LLUVIA = {
+    "lluvia_ideam_anio-2018_estacion-0023025502": "1GkVPcrREO7JshQ_e83_qjA_DnHOiKcA_",
+    "lluvia_ideam_anio-2018_estacion-0026155502": "1H0fQSaFmiZuOaUdn7_gbS4YbxnbWbda0",
+    "lluvia_ideam_anio-2019_estacion-0023025502": "1pyOrCUHWn4RboCzHwXtz0tRi6z7BRLTr",
+    "lluvia_ideam_anio-2019_estacion-0026155502": "1y3KZTjj4kLDSH7bxSh2Z6jDhegMiT8OM",
+    "lluvia_ideam_anio-2020_estacion-0023025502": "1gwDevkPdP9GtDMjqzJEqUZbdtCXcFWKR",
+    "lluvia_ideam_anio-2020_estacion-0026155502": "1Bq_B9jZGCsL6giSi2_ZzqvskEDedT3eT",
+    "lluvia_ideam_anio-2021_estacion-0023025502": "14hqeYVexBMw1av-YFE1EW5HXJCL1ASod",
+    "lluvia_ideam_anio-2021_estacion-0026155502": "180e2SM0YtARzrmLlAovBdlv3Byo0sGmo",
+    "lluvia_ideam_anio-2022_estacion-0023025502": "1-K8SybRIHnhkij5zshaOlSPX3dtO57Ks",
+    "lluvia_ideam_anio-2022_estacion-0026155502": "1JFbApdvYOM-qQF7asnbLPwcB2v9O8vEi",
+    "lluvia_ideam_anio-2023_estacion-0023025502": "1yB8tPrGbKWSRBGEweH_uE2vGoMh65Z0i",
+    "lluvia_ideam_anio-2023_estacion-0026155502": "1eu-U205odFBEXDSfBjrWy-6lpKXu2Lqn",
+}
+RESPALDO_EMERGENCIAS = {"emergencias_ungrd_departamento-CALDAS": "1he1Eu5ZOM75pzoKpu8tW-Kvfczj1iNOR"}
+RESPALDO_LONDRES = {"londres_diario_archivos-24": "1UZZnr35EfV9-rkQStGu9fcSKJd_wzyWu"}
+
+
 FICHAS = {
     "londres_diario": {
         "titulo": "Londres: consumo diario por hogar, de los medidores inteligentes de Low Carbon London",
@@ -216,6 +235,7 @@ FICHAS = {
         "licencia": "CC BY 4.0. Citar a UK Power Networks.",
         "constructor": construir_londres,
         "md5": None,  # depende de cuántos archivos se pidan: se registra, no se compara
+        "respaldo_drive": RESPALDO_LONDRES,
     },
     "lluvia_ideam": {
         "titulo": "IDEAM: precipitación cada diez minutos, una estación y un año",
@@ -224,6 +244,7 @@ FICHAS = {
         "licencia": "CC BY-SA 4.0. Citar al IDEAM como fuente.",
         "constructor": construir_lluvia,
         "md5": None,  # el IDEAM actualiza y corrige la serie: se registra, no se compara
+        "respaldo_drive": RESPALDO_LLUVIA,
     },
     "emergencias_ungrd": {
         "titulo": "UNGRD: emergencias reportadas en un departamento, 2019 a 2025",
@@ -232,5 +253,6 @@ FICHAS = {
         "licencia": "CC BY-SA 4.0 (2019 a 2024) y CC BY 4.0 (2025). Citar a la UNGRD como fuente.",
         "constructor": construir_emergencias,
         "md5": None,
+        "respaldo_drive": RESPALDO_EMERGENCIAS,
     },
 }

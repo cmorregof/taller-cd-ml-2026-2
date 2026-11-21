@@ -143,9 +143,16 @@ def descargar(nombre: str, forzar: bool = False, **opciones) -> pd.DataFrame:
         tabla = ficha["constructor"](**opciones)
         origen = "fuente oficial"
     except Exception as error:  # la red falla de muchas maneras: se informa y se sigue
-        if not en_respaldo.exists() and ficha.get("respaldo_drive") and not opciones:
+        # La copia en Drive es un identificador si el dato no tiene variantes, o un
+        # diccionario {nombre del archivo sin extensión: identificador} si las tiene.
+        copia = ficha.get("respaldo_drive")
+        if isinstance(copia, dict):
+            copia = copia.get(archivo.removesuffix(".csv.gz"))
+        elif opciones:
+            copia = None
+        if not en_respaldo.exists() and copia:
             print(f"[{nombre}] Bajo la copia del profesor desde Google Drive.")
-            _bajar_respaldo(ficha["respaldo_drive"], en_respaldo)
+            _bajar_respaldo(copia, en_respaldo)
         if not en_respaldo.exists():
             raise RuntimeError(
                 f"No pude descargar «{nombre}» de {ficha['fuente']} y no hay copia en la "
