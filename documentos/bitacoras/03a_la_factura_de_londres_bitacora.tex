@@ -1,0 +1,100 @@
+\documentclass[10pt,letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1.5cm,top=1.3cm,bottom=1.4cm]{geometry}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{tabularx,array}
+\usepackage[table]{xcolor}
+\usepackage[most]{tcolorbox}
+\definecolor{rojo}{HTML}{D7263D}
+\definecolor{azul}{HTML}{1D4E89}
+\definecolor{gris}{HTML}{9AA5B1}
+\definecolor{fondo}{HTML}{FBFAF7}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\raggedright\hyphenpenalty=10000
+\renewcommand{\arraystretch}{1.25}
+\arrayrulecolor{gris}
+\newcommand{\renglon}{\vspace{6mm}\hrule height 0.3pt\relax}
+\newtcolorbox{caja}[1]{enhanced,breakable,colback=white,colframe=azul,boxrule=0.6pt,arc=1.5mm,
+  left=2mm,right=2mm,top=1.5mm,bottom=2mm,fonttitle=\bfseries\small,title={#1},
+  colbacktitle=azul,coltitle=white,before skip=3mm,after skip=0mm}
+\newtcolorbox{cajaroja}[1]{enhanced,breakable,colback=white,colframe=rojo,boxrule=0.6pt,arc=1.5mm,
+  left=2mm,right=2mm,top=1.5mm,bottom=2mm,fonttitle=\bfseries\small,title={#1},
+  colbacktitle=rojo,coltitle=white,before skip=3mm,after skip=0mm}
+\begin{document}
+
+{\color{rojo}\rule{\linewidth}{2pt}}\\[1.5mm]
+{\LARGE\bfseries La factura de Londres}\hfill{\small\color{azul}\bfseries HOJA DE BITÁCORA}\\[0.5mm]
+{\small Clase 3 \textperiodcentered{} martes 24 de noviembre de 2026 \textperiodcentered{} Taller en Ciencia de Datos y Aprendizaje Automático \textperiodcentered{} UNAL Manizales}\\[3mm]
+\textbf{Nombre:} \rule{0.62\linewidth}{0.3pt}\hfill \textbf{Fecha:} \rule{0.2\linewidth}{0.3pt}\\[1mm]
+{\footnotesize\color{azul}Al terminar, tómenle una foto a las dos caras y adjúntenla a la tarea de Classroom.}\\[-2mm]
+\begin{cajaroja}{Apuestas. Se escriben con esfero, antes de correr la celda, y no se corrigen}
+\begin{tabularx}{\linewidth}{|c|X|p{3.1cm}|p{3.1cm}|}\hline
+ & \textbf{\small Pregunta} & \textbf{\small Mi apuesta} & \textbf{\small Lo que salió}\\\hline
+\textbf{A1} & \rule{0pt}{8mm}Un archivo trae un millón de filas. ¿De cuántos hogares? & & \\\hline
+\textbf{A2} & \rule{0pt}{8mm}Ese archivo pesa 51 MB en disco. ¿Cuánto ocupa en memoria? & & \\\hline
+\textbf{A3} & \rule{0pt}{8mm}Entre enero de 2012 y enero de 2013, ¿por cuánto se multiplicó el consumo total de la muestra? ¿Y el consumo por hogar? & & \\\hline
+\textbf{A4} & \rule{0pt}{8mm}Si digo que mañana un hogar promedio consume igual que hoy, ¿en qué porcentaje me equivoco? & & \\\hline
+\end{tabularx}
+\end{cajaroja}
+\begin{caja}{Sección 2. Las tres trampas del pedazo}
+\begin{tabularx}{\linewidth}{|l|X|}\hline
+\textbf{\small Trampa} & \textbf{\small Qué pasaría si no la arreglo}\\\hline
+\rule{0pt}{7mm}1. & \\\hline
+\rule{0pt}{7mm}2. & \\\hline
+\rule{0pt}{7mm}3. & \\\hline
+\end{tabularx}
+\end{caja}
+\begin{caja}{Sección 3. Un resumen por pedazo}
+\begin{tabularx}{\linewidth}{|l|X|X|}\hline
+\textbf{\small Archivo} & \textbf{\small Hogares} & \textbf{\small kWh por hogar y día}\\\hline
+\rule{0pt}{7mm} &  & \\\hline
+\rule{0pt}{7mm} &  & \\\hline
+\rule{0pt}{7mm} &  & \\\hline
+\rule{0pt}{7mm} &  & \\\hline
+\end{tabularx}
+\end{caja}
+\begin{caja}{Secciones 4 y 5. Las versiones del dato}
+\begin{tabularx}{\linewidth}{|l|X|X|}\hline
+\textbf{\small Versión} & \textbf{\small Huella} & \textbf{\small Regla, con mis palabras}\\\hline
+\rule{0pt}{7mm}1 &  & \\\hline
+\rule{0pt}{7mm}2 &  & \\\hline
+\end{tabularx}
+\end{caja}
+\begin{caja}{Sección 7. El pronóstico (MAPE en prueba)}
+\begin{tabularx}{\linewidth}{|l|X|}\hline
+\textbf{\small Método} & \textbf{\small MAPE (\%)}\\\hline
+\rule{0pt}{7mm}Igual que hoy & \\\hline
+\rule{0pt}{7mm}Igual que hace una semana & \\\hline
+\rule{0pt}{7mm}El modelo elegido: & \\\hline
+\end{tabularx}
+\end{caja}
+\begin{caja}{Mis respuestas, con mis palabras}
+{\small\bfseries Sección 3. ¿Por qué se guardan sumas y cuentas, y no promedios?}\renglon\renglon\vspace{2mm}
+
+{\small\bfseries Sección 5. ¿Qué le habría reportado a la empresa quien sumara kWh por día sin contar hogares?}\renglon\renglon\vspace{2mm}
+
+{\small\bfseries Sección 7. Dos personas reportan errores distintos y ninguna anotó la huella. ¿Qué no pueden saber?}\renglon\renglon\vspace{2mm}
+
+\end{caja}
+\begin{cajaroja}{Sección 8. La decisión en tres frases, para una gerente que no sabe qué es un percentil}
+{\small\bfseries 1. Recomendación:}\renglon\renglon\vspace{2mm}
+
+{\small\bfseries 2. Evidencia:}\renglon\renglon\vspace{2mm}
+
+{\small\bfseries 3. Riesgo:}\renglon\renglon\vspace{2mm}
+
+\end{cajaroja}
+\begin{caja}{Cambien una línea: ARCHIVOS = 4 y ARCHIVOS = 8}
+\begin{tabularx}{\linewidth}{|p{7.2cm}|X|X|}\hline
+\textbf{\small } & \textbf{\small 4 archivos} & \textbf{\small 8 archivos}\\\hline
+\rule{0pt}{7mm}Hogares leídos en vivo &  & \\\hline
+\rule{0pt}{7mm}kWh por hogar y día: del pedazo más bajo al más alto &  & \\\hline
+\rule{0pt}{7mm}Huella de la versión 1 &  & \\\hline
+\rule{0pt}{7mm}MAPE de \guillemotleft{}igual que hoy\guillemotright{} en prueba &  & \\\hline
+\end{tabularx}
+\par\vspace{3mm}{\small\bfseries ¿Qué cambió y qué no? ¿Por qué?}\renglon\renglon
+\end{caja}
+\end{document}

@@ -16,10 +16,10 @@ from matplotlib import font_manager
 RAIZ = Path(__file__).resolve().parent.parent
 FUENTES = RAIZ / "datos" / "cache" / "fuentes"
 URLS = {
-    "SourceSerif4.ttf": "https://github.com/google/fonts/raw/main/ofl/sourceserif4/SourceSerif4%5Bopsz,wght%5D.ttf",
-    "FiraSansCondensed-Regular.ttf": "https://github.com/google/fonts/raw/main/ofl/firasanscondensed/FiraSansCondensed-Regular.ttf",
-    "FiraSansCondensed-Medium.ttf": "https://github.com/google/fonts/raw/main/ofl/firasanscondensed/FiraSansCondensed-Medium.ttf",
-    "FiraSansCondensed-SemiBold.ttf": "https://github.com/google/fonts/raw/main/ofl/firasanscondensed/FiraSansCondensed-SemiBold.ttf",
+    "SourceSerif4.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/sourceserif4/SourceSerif4%5Bopsz,wght%5D.ttf",
+    "FiraSansCondensed-Regular.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/firasanscondensed/FiraSansCondensed-Regular.ttf",
+    "FiraSansCondensed-Medium.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/firasanscondensed/FiraSansCondensed-Medium.ttf",
+    "FiraSansCondensed-SemiBold.ttf": "https://raw.githubusercontent.com/google/fonts/main/ofl/firasanscondensed/FiraSansCondensed-SemiBold.ttf",
 }
 ROJO, AZUL, MORADO, GRIS, TINTA, FONDO = "#D7263D", "#1D4E89", "#6C4AB6", "#9AA5B1", "#121212", "#FBFAF7"
 SERIF, COND = "DejaVu Serif", "DejaVu Sans"
