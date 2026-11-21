@@ -3,6 +3,11 @@
 Un post diario, en ciclos de dos en español y uno en inglés. Cada post sale de un cuaderno del curso. Las láminas las generan los guiones de `herramientas/posts/` y la portada sale de una foto de `fotos/` con `herramientas/posts/portada.py`. El PDF del carrusel queda en esta carpeta.
 
 | Día | Post | Idioma | Carrusel | Estado |
+|---|---|---|---|---|
+| Sáb 21 nov, 8:00 | El IPC del sancocho | español | `../post_sancocho/carrusel_indice_del_sancocho.pdf` | programado con el texto anterior |
+| Dom 22 nov | ¿Quién se queda atrás en el ICFES? | español | `carrusel_la_brecha_del_icfes.pdf` (7 láminas) | listo para programar |
+| Lun 23 nov | Can you predict tomorrow's price of electricity? | inglés | `carousel_colombia_power_price.pdf` (6 láminas) | listo para programar |
+
 |---
 
 ## Sáb 21 nov · El IPC del sancocho
