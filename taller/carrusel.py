@@ -50,7 +50,8 @@ def preparar_fuentes() -> None:
         print(f"No pude bajar las fuentes ({type(error).__name__}); uso las de matplotlib.")
 
 
-def _lienzo(etiqueta: str, titular: str, bajada: str, pie: str, pagina: str, izquierda: float = 0.1):
+def _lienzo(etiqueta: str, titular: str, bajada: str, pie: str, pagina: str, izquierda: float = 0.1,
+            derecha: float = 0.86):
     """Marco común: filete, etiqueta, titular, bajada, pie y número. Se acomoda al largo del titular."""
     fig = plt.figure(figsize=(10.8, 13.5), dpi=100, facecolor=FONDO)
     fig.patches.append(plt.Rectangle((0, 0.9926), 1, 0.0074, transform=fig.transFigure, color=ROJO))
@@ -63,7 +64,7 @@ def _lienzo(etiqueta: str, titular: str, bajada: str, pie: str, pagina: str, izq
     techo = y_bajada - 0.024 * lineas_b - 0.05
     fig.text(0.067, 0.035, pie, fontsize=15, family=COND, color="#5F6B7A", va="bottom", linespacing=1.35)
     fig.text(0.933, 0.035, pagina, fontsize=16, family=COND, weight="semibold", color="#5F6B7A", ha="right", va="bottom")
-    ax = fig.add_axes([izquierda, 0.15, 0.86 - izquierda, techo - 0.15], facecolor=FONDO)
+    ax = fig.add_axes([izquierda, 0.15, derecha - izquierda, techo - 0.15], facecolor=FONDO)
     for lado in ["top", "right", "left"]:
         ax.spines[lado].set_visible(False)
     ax.tick_params(labelsize=17, colors="#3A3A3A", length=0)
@@ -78,15 +79,17 @@ def _fuente_ejes(ax):
 
 
 def lamina_lineas(series: dict, colores: dict, etiqueta: str, titular: str, bajada: str, pie: str, pagina: str,
-                  ruta: str | None = None):
-    """Varias series de tiempo con el nombre escrito al final de cada línea, sin leyenda."""
-    fig, ax = _lienzo(etiqueta, titular, bajada, pie, pagina)
+                  ruta: str | None = None, base: float | None = 100):
+    """Varias series de tiempo con el nombre escrito al final de cada línea, sin leyenda.
+    `base` dibuja una línea de referencia (100 en un índice); None la quita."""
+    fig, ax = _lienzo(etiqueta, titular, bajada, pie, pagina, derecha=0.8)
     for nombre, serie in series.items():
         grueso = 4.2 if colores[nombre] not in (GRIS,) else 2.6
         ax.plot(serie.index, serie.values, color=colores[nombre], lw=grueso, solid_capstyle="round")
         ax.text(serie.index[-1], serie.values[-1], f"  {nombre}", color=colores[nombre], fontsize=18,
                 family=COND, weight="semibold", va="center")
-    ax.axhline(100, color="#3A3A3A", lw=1)
+    if base is not None:
+        ax.axhline(base, color="#3A3A3A", lw=1)
     ax.margins(x=0.02)
     _fuente_ejes(ax)
     if ruta:
@@ -95,13 +98,13 @@ def lamina_lineas(series: dict, colores: dict, etiqueta: str, titular: str, baja
 
 
 def lamina_barras(valores: dict, colores: dict, etiqueta: str, titular: str, bajada: str, pie: str, pagina: str,
-                  ruta: str | None = None, sufijo: str = " %"):
+                  ruta: str | None = None, sufijo: str = " %", decimales: int = 1):
     """Barras verticales con el valor escrito encima de cada una."""
     fig, ax = _lienzo(etiqueta, titular, bajada, pie, pagina)
     nombres = list(valores)
     barras = ax.bar(nombres, [valores[n] for n in nombres], color=[colores[n] for n in nombres], width=0.62)
     for b, n in zip(barras, nombres):
-        ax.text(b.get_x() + b.get_width() / 2, b.get_height(), f"{valores[n]:.1f}{sufijo}".replace(".", ","),
+        ax.text(b.get_x() + b.get_width() / 2, b.get_height(), f"{valores[n]:,.{decimales}f}{sufijo}".replace(",", "X").replace(".", ",").replace("X", "."),
                 ha="center", va="bottom", fontsize=26, family=SERIF, weight="bold", color=colores[n])
     ax.set_yticks([])
     ax.spines["bottom"].set_color("#3A3A3A")

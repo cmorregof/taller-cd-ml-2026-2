@@ -791,20 +791,20 @@ procedencia()
 # ------------------------------------------------------------ EL PRECIO DE LA LUZ
 LUZ = [
 ("md", r'''
-# Clase 1 · El precio de la luz (gemelo)
+# El precio de la luz (gemelo)
 
 **Taller en Ciencia de Datos y Aprendizaje Automático** · Especialización en Estadística · UNAL Manizales · 2026-II
 Profesor: Carlos Manuel Orrego Franco
 
-Este cuaderno lo resuelve cada uno, de forma individual, en la segunda mitad de la clase. Es el gemelo de *El sancocho*: la misma técnica en otro mundo.
+Este cuaderno lo resuelve cada uno, de forma individual. Es el gemelo de *El sancocho*: la misma técnica en otro mundo. Termina como *El IPC del sancocho*, con su propio post.
 
 | Ficha | |
 |---|---|
-| **Objetivo pedagógico** | Repetir por cuenta propia el camino de la clase: formular, limpiar, explorar, comparar cinco modelos contra una línea base con validación temporal y convertir el resultado en una decisión. |
+| **Objetivo pedagógico** | Repetir por cuenta propia el camino de la clase: formular, limpiar, explorar, comparar modelos contra una línea base con validación temporal, decidir y contar el resultado en un post. |
 | **Enfoque** | Ciencia de Datos. |
 | **Resultados de aprendizaje** | 1 (formular), 2 (seleccionar y preparar datos), 3 (flujo reproducible), 4 (implementar y evaluar) y 5 (comunicar). |
 | **Uso de IA** | Pueden pedirle a Claude que explique una celda, que les ayude a llenar un hueco o que interprete un error. Deben poder explicar sin ayuda la regla con que se escogió la versión del precio, por qué los tramos son temporales, por qué el ganador se escoge en validación y qué significa su MAPE. |
-| **Entregable** | El cuaderno completo y corrido en su portafolio de GitHub, con las predicciones escritas, la decisión en tres frases y la bitácora llenas. |
+| **Entregable** | El cuaderno corrido en su portafolio de GitHub, con las predicciones, la decisión en tres frases y la bitácora llenas, y sus dos láminas para LinkedIn. |
 
 **Cómo se trabaja.** El código está escrito casi todo. Donde vean `____` falta una pieza, y el comentario de al lado dice qué va. Lean la celda entera antes de llenar. Si una celda falla, lean el error antes de pedir ayuda.
 '''),
@@ -818,7 +818,7 @@ Imagínense una empresa mediana de Manizales que gasta mucha energía. Puede com
 
 1. **Predecir.** ¿Cuál será el precio de bolsa promedio de mañana? ¿Y el de dentro de siete días?
 2. **Explicar.** ¿Cuánto del precio se entiende mirando el nivel de los embalses?
-3. **Decidir.** Si le ofrecen un precio fijo, ¿desde qué valor le conviene firmar? ¿Cambia la respuesta si el contrato es para mañana o para la otra semana?
+3. **Decidir.** Si le ofrecen un precio fijo, ¿desde qué valor le conviene firmar?
 
 **La métrica** es la misma de la clase: el MAPE del pronóstico, primero a un día y después a siete.
 
@@ -833,7 +833,7 @@ Escriban su apuesta antes de correr nada.
 ("md", r'''
 ## 2. Datos
 
-Pedimos dos tablas a XM: el precio de bolsa hora por hora y la energía guardada en cada embalse día por día, de enero de 2023 a octubre de 2026. **La descarga tarda entre cinco y seis minutos** porque XM entrega un mes por consulta. Córranla y lean la sección mientras termina.
+Pedimos dos tablas a XM: el precio de bolsa hora por hora y la energía guardada en cada embalse día por día, de enero de 2023 a octubre de 2026. **En Colab la descarga tarda unos doce minutos**, porque XM entrega un mes por consulta. Córranla apenas empiecen y lean la sección mientras termina.
 '''),
 ("code", r'''
 precio_crudo = descargar("xm_precio")
@@ -936,29 +936,26 @@ datos["embalse"].plot(color="#5BC0EB"); plt.title("Nivel agregado de los embalse
 ("md", r'''
 ### 2.4 Conocer el dato antes de modelarlo
 
-Cuatro miradas rápidas: a qué horas es cara la energía, si el día de la semana importa, cómo se reparten los precios y cuánta memoria tiene la serie. Llamo $P_t$ al precio promedio del día $t$.
+Tres miradas rápidas: a qué horas es cara la energía, si el día de la semana importa y cómo se reparten los precios.
 '''),
 ("code", r'''
 horario["hora"] = pd.to_datetime(horario["FechaHora"]).dt.hour
 dias = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
 
-fig, ejes = plt.subplots(2, 2, figsize=(12, 7))
-horario.groupby("hora")["Valor"].«median»().plot(ax=ejes[0, 0], color="#1D4E89", marker="o", ms=3)      # HUECO 5: un resumen que no se deje arrastrar por los días extremos
-ejes[0, 0].set(title="Precio mediano por hora del día", xlabel="hora", ylabel="COP/kWh")
-
+fig, ejes = plt.subplots(1, 3, figsize=(15, 4))
+horario.groupby("hora")["Valor"].«median»().plot(ax=ejes[0], color="#1D4E89", marker="o", ms=3)      # HUECO 5: un resumen que no se deje arrastrar por los días extremos
+ejes[0].set(title="Precio mediano por hora del día", xlabel="hora", ylabel="COP/kWh")
 por_dia_semana = datos["precio"].groupby(datos.index.dayofweek).median()
-ejes[0, 1].bar(dias, por_dia_semana.values, color="#1B998B"); ejes[0, 1].set(title="Precio mediano por día de la semana")
-
-ejes[1, 0].hist(np.log10(datos["precio"]), bins=40, color="#D7263D")
-ejes[1, 0].set(title="Distribución del precio diario (escala logarítmica)", xlabel="log10 del precio")
-
-rezagos = range(1, 31)
-ejes[1, 1].bar(rezagos, [datos["precio"].autocorr(k) for k in rezagos], color="#1D4E89")
-ejes[1, 1].set(title="Autocorrelación del precio diario", xlabel="rezago (días)")
+ejes[1].bar(dias, por_dia_semana.values, color="#1B998B"); ejes[1].set(title="Precio mediano por día de la semana")
+ejes[2].hist(np.log10(datos["precio"]), bins=40, color="#D7263D")
+ejes[2].set(title="Precio diario (escala logarítmica)", xlabel="log10 del precio")
 plt.tight_layout(); plt.show()
 print(f"Media: {datos['precio'].mean():.0f} | Mediana: {datos['precio'].median():.0f} | Máximo: {datos['precio'].max():.0f} COP/kWh")
 '''),
 ("md", r'''
+- ¿A qué hora es más cara la energía, y por qué creen? **Mi lectura:**
+- La media y la mediana no coinciden. ¿Qué dice eso de la forma de la distribución? **Mi lectura:**
+
 **Una prueba de hipótesis: ¿importa el día de la semana?** Las barras de arriba se ven distintas, pero las barras siempre se ven distintas. La prueba de Kruskal-Wallis compara los siete grupos de precios, uno por día de la semana, y contrasta
 
 $$H_0:\ \text{los siete días tienen la misma distribución de precios}\qquad\text{contra}\qquad H_1:\ \text{al menos uno se desplaza}.$$
@@ -975,45 +972,6 @@ print("Mediana por día:", {dias[d]: round(float(g.median())) for d, g in enumer
 '''),
 ("md", r'''
 - Con ese valor $p$, ¿rechazan $H_0$? ¿El efecto es grande o pequeño frente a lo que cambia el precio de un mes a otro? **Mi lectura:**
-- La prueba supone observaciones independientes. El precio de hoy se parece al de ayer. ¿Eso hace la prueba más exigente o más generosa? **Mi respuesta:**
-
-Respondan en una línea cada una.
-
-- ¿A qué hora es más cara la energía, y por qué creen? **Mi lectura:**
-- La media y la mediana no coinciden. ¿Qué dice eso de la forma de la distribución? **Mi lectura:**
-- La autocorrelación de orden $k$ es $\hat\rho_k=\dfrac{\sum_t (P_t-\bar P)(P_{t-k}-\bar P)}{\sum_t (P_t-\bar P)^2}$. ¿El precio de hoy se parece al de ayer? ¿Y al de hace un mes? **Mi lectura:**
-
-### 2.5 PCA: ¿los embalses se llenan y se vacían juntos?
-
-En clase usamos PCA para ver si los ingredientes se movían juntos. Aquí la pregunta es la misma con los embalses. Tomo el porcentaje de llenado de cada embalse, lo estandarizo y descompongo la matriz de correlaciones:
-
-$$R=V\Lambda V^\top,\qquad \text{varianza explicada por el componente } j=\frac{\lambda_j}{\sum_k\lambda_k}.$$
-
-**Predicción escrita:** hay más de veinte embalses. Si todos dependieran de la misma lluvia, ¿cuánto explicaría el primer componente? **Mi apuesta:**
-'''),
-("code", r'''
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
-
-llenado = sin_repetir.assign(pct=sin_repetir["VolumenUtilDiarioEnergia"] / sin_repetir["CapacidadUtilEnergia"] * 100)
-llenado = llenado[llenado["CapacidadUtilEnergia"] > 0].pivot_table(index="fecha", columns="CodigoEmbalse", values="pct")
-llenado = llenado.drop(columns=[c for c in llenado if c.startswith("AGREGADO")]).ffill().dropna()
-
-Zl = StandardScaler().fit_transform(llenado)                       # una columna por embalse, una fila por día
-pca = PCA(n_components=«3»).fit(Zl.T)                               # HUECO 6: cuántos componentes necesita una figura en tres dimensiones
-explicada = pca.explained_variance_ratio_ * 100
-puntos = pd.DataFrame(pca.transform(Zl.T), index=llenado.columns, columns=["CP1", "CP2", "CP3"])   # al trasponer, cada embalse es un punto
-region = sin_repetir.drop_duplicates("CodigoEmbalse").set_index("CodigoEmbalse")["RegionHidrologica"].reindex(puntos.index).fillna("sin región")
-
-nube_3d(puntos, grupo=region, etiquetas=True, tamano=7,
-        titulo=f"Los {len(puntos)} embalses en tres componentes",
-        subtitulo="Cada punto es un embalse. Dos embalses quedan cerca si se llenan y se vacían en las mismas fechas. Arrastren para girar.",
-        ejes=[f"CP{j + 1} ({explicada[j]:.0f} %)" for j in range(3)]).show()
-print(f"{llenado.shape[1]} embalses | Los tres primeros componentes explican {explicada.sum():.0f} % de la varianza")
-'''),
-("md", r'''
-- ¿Los embalses de una misma región hidrológica quedan cerca en la gráfica? **Mi lectura:**
-- ¿Sirve resumir todos los embalses en un solo número, como hicimos con el nivel agregado? **Mi respuesta:**
 '''),
 ("md", r'''
 ## 3. Modelado
@@ -1030,13 +988,13 @@ Empezamos con $h=1$: el precio de mañana. Al final del cuaderno cambiarán esa 
 '''),
 ("code", r'''
 H = 1                                                         # horizonte en días. Al final lo cambiarán por 7.
-tabla = pd.DataFrame({"real": datos["precio"].shift(«-H»)})   # HUECO 7: el desplazamiento que trae el precio de dentro de H días a la fila de hoy
+tabla = pd.DataFrame({"real": datos["precio"].shift(«-H»)})   # HUECO 6: el desplazamiento que trae el precio de dentro de H días a la fila de hoy
 tabla["ingenuo"] = datos["precio"]
 tabla["promedio_7"] = datos["precio"].rolling(7).mean()
 tabla = tabla.dropna()
 
 def mape(real, pronostico):
-    return float((abs(real - pronostico) / «real»).mean() * 100)   # HUECO 8: ¿contra qué se compara el error para volverlo porcentaje?
+    return float((abs(real - pronostico) / «real»).mean() * 100)   # HUECO 7: ¿contra qué se compara el error para volverlo porcentaje?
 
 for metodo in ["ingenuo", "promedio_7"]:
     print(f"MAPE {metodo}: {mape(tabla['real'], tabla[metodo]):.1f} %")
@@ -1044,15 +1002,21 @@ for metodo in ["ingenuo", "promedio_7"]:
 ("md", r'''
 Comparen con su segunda apuesta.
 
-### 3.2 Cinco modelos y el mismo protocolo de la clase
+### 3.2 Ocho candidatos y el mismo protocolo de la clase
 
-Los cinco candidatos son los de la clase: regresión lineal, Ridge, $k$ vecinos, bosque aleatorio y *gradient boosting*. Les pedimos el **cambio relativo** $y_t=P_{t+h}/P_t$ y no el nivel, por la razón que vimos con el sancocho: los árboles y los vecinos no pueden pronosticar por encima de lo que ya vieron.
+Compiten las dos líneas base, el **suavizado exponencial** y cinco modelos de aprendizaje: regresión lineal, Ridge, $k$ vecinos, bosque aleatorio y *gradient boosting*. Los cinco modelos pronostican el **cambio relativo** $P_{t+h}/P_t$ y no el nivel, por la razón que vimos con el sancocho: los árboles y los vecinos no pueden pronosticar por encima de lo que ya vieron.
 
-Sumamos un sexto candidato hecho para series de tiempo, el **suavizado exponencial**. Lleva un nivel que se actualiza con cada dato y lo usa como pronóstico:
+Esto es lo que ve cada modelo el día $t$. La función `competir` lo arma, pero ustedes deben saber leerlo:
 
-$$\ell_t=\alpha P_t+(1-\alpha)\,\ell_{t-1},\qquad \hat P_{t+h}=\ell_t.$$
+| Variable | En palabras |
+|---|---|
+| `ayer` | el precio de ayer, como fracción del de hoy |
+| `promedio_7`, `promedio_30` | el promedio de la última semana y del último mes, como fracción del de hoy |
+| `embalse` | el nivel agregado de los embalses hoy |
+| `embalse_cambio_7` | cuánto subió o bajó el embalse en la última semana |
+| `dia_semana` | de 0 (lunes) a 6 (domingo) |
 
-Con $\alpha=1$ es el pronóstico ingenuo, y con $\alpha$ pequeño es un promedio largo. El valor de $\alpha$ se escoge solo con el entrenamiento.
+El suavizado exponencial lleva un nivel que se actualiza con cada dato, $\ell_t=\alpha P_t+(1-\alpha)\,\ell_{t-1}$, y lo usa como pronóstico. Con $\alpha=1$ es el ingenuo. El valor de $\alpha$ se escoge solo con el entrenamiento.
 
 El tiempo se parte en tres tramos:
 
@@ -1061,65 +1025,13 @@ $$\underbrace{2023\ \dots\ 2024}_{\text{entrenamiento}}\ \Big|\ \underbrace{\tex
 **Predicción escrita:** ¿algún modelo le ganará al pronóstico ingenuo en la prueba? **Mi apuesta:**
 '''),
 ("code", r'''
-from sklearn.linear_model import Ridge
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
+from taller.luz import competir, pronostico
 
-def cinco_modelos():
-    return {
-        "lineal": LinearRegression(),
-        "ridge": make_pipeline(StandardScaler(), Ridge(alpha=10)),
-        "k vecinos": make_pipeline(StandardScaler(), KNeighborsRegressor(n_neighbors=«5»)),   # HUECO 0: cuántos vecinos promedia el modelo. En clase usamos 5
-        "bosque": RandomForestRegressor(n_estimators=300, random_state=0),
-        "boosting": GradientBoostingRegressor(random_state=0),
-    }
-
-X = pd.DataFrame({
-    "ayer": datos["precio"].shift(1) / datos["precio"],
-    "promedio_7": datos["precio"].rolling(7).mean() / datos["precio"],
-    "promedio_30": datos["precio"].rolling(30).mean() / datos["precio"],
-    "embalse": datos["embalse"],
-    "embalse_cambio_7": datos["embalse"] - datos["embalse"].shift(7),
-    "dia_semana": datos.index.dayofweek,
-})
-base = X.join(datos["precio"].rename("hoy")).join(datos["precio"].shift(-H).rename("real")).dropna()
-variables = list(X.columns)
-razon = base["real"] / base["hoy"]
-
-objetivo = base.index + pd.Timedelta(days=H)                    # el día que cada fila intenta adivinar
-E = objetivo <= pd.Timestamp("2024-12-31")
-V = (base.index >= "2025-01-01") & (objetivo <= pd.Timestamp(«"2025-06-30"»))   # HUECO 10: la fecha en que termina la validación, entre comillas
-P = base.index >= "2025-07-01"
-print(f"Entrenamiento: {E.sum()} días | Validación: {V.sum()} | Prueba: {P.sum()}")
-
-errores, pronosticos = {}, {}
-for nombre, modelo in cinco_modelos().items():
-    modelo.fit(base[variables][E], razon[E])                    # se entrena solo con el pasado
-    en_validacion = mape(base["real"][V], modelo.predict(base[variables][V]) * base["hoy"][V])
-    modelo.fit(base[variables][E | V], razon[E | V])            # se reentrena con todo lo anterior a la prueba
-    pronosticos[nombre] = pd.Series(modelo.predict(base[variables][P]) * base["hoy"][P].values, index=base.index[P])
-    errores[nombre] = {"validación": en_validacion, "prueba": mape(base["real"][P], pronosticos[nombre])}
-
-# Un candidato hecho para series de tiempo: el suavizado exponencial
-def suavizado(alfa):
-    return datos["precio"].ewm(alpha=alfa, adjust=False).mean()           # nivel_t = alfa * precio_t + (1 - alfa) * nivel_(t-1)
-
-alfas = np.round(np.arange(0.05, 1.0, 0.05), 2)
-mejor_alfa = min(alfas, key=lambda a: mape(base["real"][E], suavizado(a)[base.index[E]]))   # alfa se escoge solo con el entrenamiento
-nivel = suavizado(mejor_alfa)
-errores["suavizado exponencial"] = {"validación": mape(base["real"][V], nivel[base.index[V]]),
-                                    "prueba": mape(base["real"][P], nivel[base.index[P]])}
-pronosticos["suavizado exponencial"] = nivel[base.index[P]]
-print(f"Alfa escogido en entrenamiento: {mejor_alfa}")
-
-for metodo in ["ingenuo", "promedio_7"]:
-    errores[metodo] = {"validación": mape(base["real"][V], tabla.loc[base.index[V], metodo]),
-                       "prueba": mape(base["real"][P], tabla.loc[base.index[P], metodo])}
-    pronosticos[metodo] = tabla.loc[base.index[P], metodo]
-todos = pd.DataFrame(errores).T
-pronosticos_prueba = pd.DataFrame(pronosticos)
+resultado = competir(datos, H=H,
+                     vecinos=«5»,                       # HUECO 8: cuántos vecinos promedia el modelo; en clase usamos 5
+                     fin_validacion=«"2025-06-30"»)     # HUECO 9: la fecha en que termina la validación, entre comillas
+todos = resultado.errores
+print("Días por tramo:", resultado.tramos, "| alfa del suavizado:", resultado.alfa)
 
 todos.sort_values("validación").plot.barh(figsize=(9, 4), color=["#1D4E89", "#1B998B"])
 plt.xlabel("MAPE (%)"); plt.title("Ocho candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
@@ -1129,17 +1041,17 @@ display(todos.sort_values("validación").round(1))
 **¿Por qué el ganador se escoge en validación y no en prueba?** Respondan en dos líneas, con sus palabras: **Mi respuesta:**
 '''),
 ("code", r'''
-mejor = todos[«"validación"»].idxmin()                          # HUECO 11: la columna con la que se escoge al ganador
+mejor = todos[«"validación"»].idxmin()                          # HUECO 10: la columna con la que se escoge al ganador
 resumen = todos["prueba"].round(1)
 print(f"Ganador en validación: {mejor}")
 print(f"Su MAPE en prueba: {resumen[mejor]} %   |   MAPE del ingenuo en prueba: {resumen['ingenuo']} %")
 
-fechas = base.index[P] + pd.Timedelta(days=H)
+fechas = resultado.real.index + pd.Timedelta(days=H)
 plt.figure(figsize=(11, 3.8))
-plt.plot(fechas, base["real"][P], color="black", lw=1.5, label="real")
-plt.plot(fechas, pronosticos_prueba["ingenuo"], color="#1B998B", lw=1, label="ingenuo")
+plt.plot(fechas, resultado.real, color="black", lw=1.5, label="real")
+plt.plot(fechas, resultado.pronosticos["ingenuo"], color="#1B998B", lw=1, label="ingenuo")
 if mejor != "ingenuo":
-    plt.plot(fechas, pronosticos_prueba[mejor], color="#D7263D", lw=1, ls="--", label=mejor)
+    plt.plot(fechas, resultado.pronosticos[mejor], color="#D7263D", lw=1, ls="--", label=mejor)
 plt.title(f"Pronóstico a {H} día(s) contra el precio real"); plt.ylabel("COP/kWh"); plt.legend(); plt.show()
 '''),
 ("md", r'''
@@ -1150,7 +1062,7 @@ Dos medidas de asociación. La de Pearson mide relación lineal. La de Spearman 
 $$r=\frac{\sum_t (x_t-\bar x)(y_t-\bar y)}{\sqrt{\sum_t (x_t-\bar x)^2\sum_t (y_t-\bar y)^2}},\qquad r_s=r\ \text{calculado sobre los rangos}.$$
 '''),
 ("code", r'''
-pearson = datos["precio"].corr(datos[«"embalse"»])               # HUECO 9: la otra variable de la relación
+pearson = datos["precio"].corr(datos[«"embalse"»])               # HUECO 11: la otra variable de la relación
 spearman = datos["precio"].corr(datos["embalse"], method="spearman")
 print(f"Pearson: {pearson:.2f} | Spearman: {spearman:.2f}")
 
@@ -1158,20 +1070,17 @@ fig, (izq, der) = plt.subplots(1, 2, figsize=(12, 4))
 puntos = izq.scatter(datos["embalse"], datos["precio"], s=6, c=datos.index.year, cmap="viridis")
 izq.set(xlabel="Nivel agregado de embalses (%)", ylabel="Precio de bolsa (COP/kWh)", yscale="log", title="Cada punto es un día, coloreado por año")
 plt.colorbar(puntos, ax=izq, ticks=sorted(set(datos.index.year)))
-
-modelo_bosque = cinco_modelos()["bosque"].fit(base[variables], razon)
-pd.Series(modelo_bosque.feature_importances_, index=variables).sort_values().plot.barh(ax=der, color="#1D4E89")
+resultado.importancias.plot.barh(ax=der, color="#1D4E89")
 der.set(title="Importancia de cada variable en el bosque aleatorio"); plt.tight_layout(); plt.show()
 
-print("Precio mediano según el nivel de los embalses:")
-print(datos.groupby(pd.cut(datos["embalse"], [0, 40, 50, 60, 70, 100]), observed=True)["precio"].agg(["median", "count"]).round(0))
+por_nivel = datos.groupby(pd.cut(datos["embalse"], [0, 40, 50, 60, 70, 100]), observed=True)["precio"].agg(["median", "count"]).round(0)
+print("Precio mediano según el nivel de los embalses:"); print(por_nivel)
 '''),
 ("md", r'''
 Comparen con su tercera apuesta. Luego respondan:
 
 - ¿La relación es una línea recta? ¿Cambia de un año a otro? **Mi lectura:**
 - Una correlación no prueba que los embalses causen el precio. ¿Qué otra cosa podría mover las dos variables a la vez? **Mi respuesta:**
-- La importancia de una variable en el bosque dice cuánto la usa el modelo para pronosticar el cambio de mañana. ¿Es eso lo mismo que explicar el precio? **Mi respuesta:**
 '''),
 ("md", r'''
 ## 4. Comunicación
@@ -1186,22 +1095,12 @@ Usamos el método más simple entre los que no pierden: si el ganador de validac
 '''),
 ("code", r'''
 elegido = mejor if resumen[mejor] < resumen["ingenuo"] else "ingenuo"
-cociente = base["real"][P] / pronosticos_prueba[elegido]
+cociente = resultado.real / resultado.pronosticos[elegido]
 bajo, alto = cociente.quantile(0.10), cociente.quantile(«0.90»)      # HUECO 12: el cuantil que deja por debajo 9 de cada 10 días
 
-hoy = datos.index[-1]
-if elegido == "ingenuo":
-    punto = datos["precio"].iloc[-1]
-elif elegido == "suavizado exponencial":
-    punto = nivel.iloc[-1]
-elif elegido == "promedio_7":
-    punto = datos["precio"].rolling(7).mean().iloc[-1]
-else:
-    modelo = cinco_modelos()[elegido].fit(base[variables], razon)
-    punto = float(modelo.predict(X.iloc[[-1]][variables])[0]) * datos["precio"].iloc[-1]
-
+punto = pronostico(resultado, elegido)
 print(f"Horizonte: {H} día(s) | Método elegido: {elegido} (MAPE en prueba {resumen[elegido]} %)")
-print(f"Pronóstico para el {(hoy + pd.Timedelta(days=H)).date()}: {punto:.0f} COP/kWh")
+print(f"Pronóstico para el {(datos.index[-1] + pd.Timedelta(days=H)).date()}: {punto:.0f} COP/kWh")
 print(f"Franja de 8 de cada 10 días: entre {punto * bajo:.0f} y {punto * alto:.0f} COP/kWh")
 print(f"Ancho de la franja: de {bajo:.2f} a {alto:.2f} veces el pronóstico")
 '''),
@@ -1216,7 +1115,31 @@ Para el gerente, que no sabe qué es un percentil.
 2. **Evidencia:**
 3. **Riesgo:**
 
-### 4.2 Bitácora de decisiones
+### 4.2 Su post
+
+Como en *El IPC del sancocho*, el resultado se cuenta en láminas. Escriban **su** titular: el hallazgo, no el nombre de la gráfica. Por ejemplo, «Cuando los embalses bajan del 40 %, la luz cuesta el doble», si eso es lo que dicen sus datos. Revisen la tabla de la sección 3.3 antes de escribirlo.
+'''),
+("code", r'''
+from taller import carrusel as c
+c.preparar_fuentes()
+PIE = "Fuente: XM, SiMEM. Cálculos propios.\nSu nombre"
+
+titular_1 = «"El precio de la luz\nsube y baja por oleadas"»              # HUECO 13: su titular, en una o dos líneas (\n parte la línea)
+c.lamina_lineas({"Precio de bolsa": datos["precio"].resample("MS").mean()}, {"Precio de bolsa": c.AZUL},
+                "ENERGÍA EN COLOMBIA", titular_1, "Promedio mensual del precio de bolsa nacional, COP/kWh.",
+                PIE, "1/2", "luz_1.png", base=None)
+plt.show()
+
+medianas = {f"{int(i.left)} a {int(i.right)} %": v for i, v in por_nivel["median"].items()}
+c.lamina_barras(medianas, {k: c.AZUL for k in medianas}, "PRECIO Y EMBALSES",
+                "Cuanto más vacíos los embalses,\nmás cara la luz", "Precio mediano de un día según el nivel\nagregado de los embalses (COP/kWh).",
+                PIE, "2/2", "luz_2.png", sufijo="", decimales=0)
+plt.show()
+'''),
+("md", r'''
+Revisen que el titular de la segunda lámina sea cierto con sus datos. Si no lo es, cámbienlo.
+
+### 4.3 Bitácora de decisiones
 
 Llenen las filas vacías. La primera va de ejemplo.
 
@@ -1230,14 +1153,13 @@ Llenen las filas vacías. La primera va de ejemplo.
 | Pronosticar el cambio relativo y no el nivel | | |
 | Franja con percentiles 10 y 90 | | |
 
-### 4.3 Riesgos y mantenimiento
+### 4.4 Riesgos y mantenimiento
 
 - Los días más recientes solo tienen las primeras liquidaciones, que después se corrigen. ¿Qué le pasa a un pronóstico que se hace con datos provisionales?
 - ¿Qué le preguntarían a XM sobre las versiones `TXF` y `TXR` antes de usar este análisis con plata de verdad?
-- El promedio diario simple trata igual la hora de las 3 de la mañana y la de las 7 de la noche. ¿A qué empresa le sirve mal ese promedio?
 - Si llega un fenómeno de El Niño, ¿en cuál de sus tres respuestas confiarían menos?
 
-### 4.4 Cambien una línea
+### 4.5 Cambien una línea
 
 Vuelvan a la celda donde dice `H = 1`, pongan `H = 7` y corran todo de nuevo con *Entorno de ejecución*, *Ejecutar todo*. Llenen la tabla con sus dos corridas.
 
@@ -1252,15 +1174,41 @@ Con la tabla llena, respondan en tres líneas: ¿cuánto le cuesta al gerente, e
 
 Dejen el cuaderno entregado con `H = 7` corrido y la tabla completa.
 
-### 4.5 Procedencia y entrega
+## Para ir más allá: ¿los embalses se llenan y se vacían juntos?
+
+Esta sección es opcional y no tiene nota. Tomo el porcentaje de llenado de cada embalse, lo estandarizo y aplico PCA. Cada punto es un embalse; dos embalses quedan cerca si se llenan y se vacían en las mismas fechas.
+'''),
+("code", r'''
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+llenado = sin_repetir.assign(pct=sin_repetir["VolumenUtilDiarioEnergia"] / sin_repetir["CapacidadUtilEnergia"] * 100)
+llenado = llenado[llenado["CapacidadUtilEnergia"] > 0].pivot_table(index="fecha", columns="CodigoEmbalse", values="pct")
+llenado = llenado.drop(columns=[c for c in llenado if c.startswith("AGREGADO")]).ffill().dropna()
+
+Zl = StandardScaler().fit_transform(llenado)
+pca = PCA(n_components=3).fit(Zl.T)
+explicada = pca.explained_variance_ratio_ * 100
+puntos = pd.DataFrame(pca.transform(Zl.T), index=llenado.columns, columns=["CP1", "CP2", "CP3"])
+region = sin_repetir.drop_duplicates("CodigoEmbalse").set_index("CodigoEmbalse")["RegionHidrologica"].reindex(puntos.index).fillna("sin región")
+
+nube_3d(puntos, grupo=region, etiquetas=True, tamano=7,
+        titulo=f"Los {len(puntos)} embalses en tres componentes",
+        subtitulo="Cada punto es un embalse. Arrastren para girar.",
+        ejes=[f"CP{j + 1} ({explicada[j]:.0f} %)" for j in range(3)]).show()
+print(f"{llenado.shape[1]} embalses | Los tres primeros componentes explican {explicada.sum():.0f} % de la varianza")
+'''),
+("md", r'''
+### Procedencia y entrega
 '''),
 ("code", r'''
 procedencia()
 '''),
 ("md", r'''
-**Para entregar:** en Colab, menú *Archivo*, *Guardar una copia en GitHub*, y escojan su repositorio de portafolio, carpeta `clase01/`. Un cuaderno que no corre de principio a fin desde cero no se califica: antes de guardar usen *Entorno de ejecución*, *Reiniciar sesión y ejecutar todo*.
+**Para entregar:** en Colab, menú *Archivo*, *Guardar una copia en GitHub*, y escojan su repositorio de portafolio, carpeta `clase01/`. Suban también sus dos láminas (`luz_1.png` y `luz_2.png`, en el panel de archivos de Colab). Un cuaderno que no corre de principio a fin desde cero no se califica: antes de guardar usen *Entorno de ejecución*, *Reiniciar sesión y ejecutar todo*.
 '''),
 ]
+
 
 destino = RAIZ / "clases" / "01_formular"
 nbf.write(cuaderno(SANCOCHO, False), destino / "01a_el_sancocho.ipynb")
