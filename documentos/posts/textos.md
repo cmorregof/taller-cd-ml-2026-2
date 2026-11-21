@@ -8,7 +8,7 @@ Un post diario, en ciclos de dos en español y uno en inglés. Cada post sale de
 | Dom 22 nov | ¿Quién se queda atrás en el ICFES? | español | `carrusel_la_brecha_del_icfes.pdf` (7 láminas) | listo para programar |
 | Lun 23 nov | Can you predict tomorrow's price of electricity? | inglés | `carousel_colombia_power_price.pdf` (6 láminas) | listo para programar |
 
-|---
+---
 
 ## Sáb 21 nov · El IPC del sancocho
 
