@@ -73,6 +73,12 @@ def _lienzo(etiqueta: str, titular: str, bajada: str, pie: str, pagina: str, izq
     return fig, ax
 
 
+def _numero(valor: float, decimales: int = 0, idioma: str = "es") -> str:
+    """1.529,5 en español y 1,529.5 en inglés."""
+    texto = f"{valor:,.{decimales}f}"
+    return texto if idioma == "en" else texto.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 def _fuente_ejes(ax):
     for t in ax.get_xticklabels() + ax.get_yticklabels():
         t.set_family(COND)
@@ -98,13 +104,13 @@ def lamina_lineas(series: dict, colores: dict, etiqueta: str, titular: str, baja
 
 
 def lamina_barras(valores: dict, colores: dict, etiqueta: str, titular: str, bajada: str, pie: str, pagina: str,
-                  ruta: str | None = None, sufijo: str = " %", decimales: int = 1):
+                  ruta: str | None = None, sufijo: str = " %", decimales: int = 1, idioma: str = "es"):
     """Barras verticales con el valor escrito encima de cada una."""
     fig, ax = _lienzo(etiqueta, titular, bajada, pie, pagina)
     nombres = list(valores)
     barras = ax.bar(nombres, [valores[n] for n in nombres], color=[colores[n] for n in nombres], width=0.62)
     for b, n in zip(barras, nombres):
-        ax.text(b.get_x() + b.get_width() / 2, b.get_height(), f"{valores[n]:,.{decimales}f}{sufijo}".replace(",", "X").replace(".", ",").replace("X", "."),
+        ax.text(b.get_x() + b.get_width() / 2, b.get_height(), _numero(valores[n], decimales, idioma) + sufijo,
                 ha="center", va="bottom", fontsize=26, family=SERIF, weight="bold", color=colores[n])
     ax.set_yticks([])
     ax.spines["bottom"].set_color("#3A3A3A")
