@@ -1,5 +1,5 @@
 """Genera los cuadernos de la clase 4: El Mundial de Qatar (demostración) y
-Las calles de Bogotá (gemelo).
+La Premier del Leicester (gemelo de fútbol), además de Las calles de Bogotá.
 
 El cuaderno de los estudiantes sale del mismo texto que la solución: lo que va
 entre « » en el código se reemplaza por ____.
@@ -20,23 +20,32 @@ MUNDIAL = [
 **Taller en Ciencia de Datos y Aprendizaje Automático** · Especialización en Estadística · UNAL Manizales · 2026-II
 Profesor: Carlos Manuel Orrego Franco
 
-Este cuaderno lo resuelvo yo en vivo durante la primera mitad de la clase. Ustedes lo siguen, lo corren y me interrumpen. En la segunda mitad cada uno resuelve el gemelo, *Las calles de Bogotá*, con la misma técnica y otros datos.
+Este cuaderno lo resuelvo yo en vivo durante la primera mitad de la clase. Ustedes lo siguen, lo corren y me interrumpen. En la segunda mitad cada uno resuelve el gemelo, *La Premier del Leicester*, con la misma técnica sobre una liga completa.
 
 | Ficha | |
 |---|---|
-| **Objetivo pedagógico** | Modelar un evento raro y entregar probabilidades en las que se pueda confiar: medir con reglas de puntuación en vez de exactitud, revisar la calibración y ver qué le pasa a la probabilidad cuando se «balancean» las clases. |
+| **Objetivo pedagógico** | Modelar un evento raro y entregar probabilidades en las que se pueda confiar: medir con reglas de puntuación en vez de exactitud, revisar la calibración, ver qué le pasa a la probabilidad cuando se «balancean» las clases y comparar muchos modelos sin dejarse engañar por el ganador. |
 | **Enfoque** | Machine Learning. |
 | **Resultados de aprendizaje** | 1 (formular el problema, los objetivos y la métrica), 2 (seleccionar y preparar datos), 4 (implementar y evaluar un modelo) y 5 (comunicar a quien no es técnico). |
-| **Uso de IA** | Pueden pedirle a Claude que explique una línea de código, que derive una fórmula de geometría o que escriba una gráfica. Deben poder explicar sin ayuda por qué la exactitud no sirve con un evento raro, qué mide el puntaje de Brier, cómo se lee una curva de calibración, qué le hace el balanceo a las probabilidades y por qué una suma de probabilidades es un número esperado de goles. |
-| **Entregable** | Este cuaderno corrido de principio a fin en su portafolio, con las predicciones escritas, la decisión en tres frases y la tabla de la sección 4.5 llenas. |
+| **Uso de IA** | Pueden pedirle a Claude que explique una línea de código, que derive una fórmula de geometría o que escriba una gráfica. Deben poder explicar sin ayuda por qué la exactitud no sirve con un evento raro, qué mide el puntaje de Brier, cómo se lee una curva de calibración, qué le hace el balanceo a las probabilidades, por qué una suma de probabilidades es un número esperado de goles y en qué celda se agrega un modelo nuevo. |
+| **Entregable** | Este cuaderno corrido de principio a fin en su portafolio, con las predicciones escritas, al menos tres modelos agregados por ustedes al catálogo y la decisión con su premortem. |
+'''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** Los datos son de [StatsBomb Open Data](https://github.com/statsbomb/open-data), el repositorio donde la empresa StatsBomb publica gratis, partido por partido, lo mismo que les vende a los clubes. Ábranlo y dedíquenle cinco minutos antes de correr nada.
+>
+> - En la carpeta `data/` hay tres tipos de archivo: `competitions.json`, `matches/` y `events/`. ¿Qué es una fila en cada uno?
+> - Abran la [especificación de los eventos](https://github.com/statsbomb/open-data/blob/master/doc/Open%20Data%20Events%20v4.0.0.pdf) y busquen el evento *Shot*. ¿Qué anotan de cada remate, además de si fue gol?
+> - Lean el [anuncio de la publicación del Mundial de 2022](https://blogarchive.statsbomb.com/news/statsbomb-release-free-2022-world-cup-data/). ¿Qué piden a cambio de usar el dato?
 '''),
 ("code", ARRANQUE),
 ("md", r'''
 ## 1. Formulación
 
-En el fútbol casi ningún remate es gol. Por eso el marcador es un mal resumen de un partido: un equipo puede rematar veinte veces desde lejos y otro tres veces desde el punto penal. La pregunta que se hacen los analistas es cuánto **valía** cada remate, y la respuesta es una probabilidad. A eso se le llama gol esperado.
+La clase pasada les hablé de *How to Win the Premier League*, el libro de Ian Graham. Graham es físico y dirigió durante once años el departamento de investigación del Liverpool. Su punto de partida es que en el fútbol hay tan pocos goles que el resultado de un partido mezcla mucha suerte con lo que el equipo de verdad jugó (capítulos 1 y 6).
 
-Imagínense la dirección deportiva de un club que usa el Mundial de Qatar como vitrina. Necesita tres respuestas:
+En el fútbol casi ningún remate es gol. Graham cuenta que ya en 1968 dos analistas, Reep y Benjamin, habían reportado que cerca de uno de cada diez remates termina en gol (capítulo 7). Por eso el marcador es un mal resumen de un partido: un equipo puede rematar veinte veces desde lejos y otro tres veces desde el punto penal. La pregunta que se hacen los analistas es cuánto **valía** cada remate, y la respuesta es una probabilidad. A eso se le llama gol esperado, o xG. El propio Graham admite que el nombre no ayuda: «‘Expected Goals’ is a terrible name» (capítulo 1).
+
+Hoy vamos a construir ese número con nuestras manos. Imagínense la dirección deportiva de un club que usa el Mundial de Qatar como vitrina. Necesita tres respuestas:
 
 1. **Predecir.** ¿Qué probabilidad de gol tiene cada remate, según dónde y cómo se pateó?
 2. **Explicar.** ¿Qué hace peligroso un remate?
@@ -67,10 +76,10 @@ Antes de ver un solo dato, escriban aquí su apuesta.
 ("md", r'''
 ## 2. Datos
 
-La descarga lee de GitHub los 64 partidos y tarda unos diez segundos. La licencia de StatsBomb pide citarlos como fuente y no permite redistribuir el dato, así que para esta clase no hay copia de respaldo: cada uno lo lee de GitHub.
+Una sola línea trae los remates de los 64 partidos, ya organizados en una tabla con una fila por remate. Tarda unos diez segundos.
 '''),
 ("code", r'''
-COMPETICION, TEMPORADA = 43, 106      # Mundial de Qatar 2022. Al final lo cambiarán por 223, 282: la Copa América de 2024
+COMPETICION, TEMPORADA = 43, 106      # Mundial de Qatar 2022. En el gemelo usarán 2, 27: la Premier League 2015/2016
 '''),
 ("code", r'''
 remates = descargar("remates_mundial", competicion=COMPETICION, temporada=TEMPORADA)
@@ -124,7 +133,9 @@ print("Faltantes por variable:"); print(X.isna().sum()[lambda s: s > 0].to_strin
 print("Tipo de remate de las filas con faltantes:", juego.loc[X["rivales_en_el_cono"].isna(), "tipo"].value_counts().to_dict())
 '''),
 ("md", r'''
-Comparen con su primera apuesta. Tres de las variables salen de la «foto» que StatsBomb toma en el instante del remate, con la posición de todos los jugadores: cuántos rivales hay dentro del triángulo que forman el balón y los dos palos, si el arquero está dentro de ese triángulo y qué tan lejos está de su arco. La descarga las calcula por ustedes.
+Comparen con su primera apuesta, y con el uno de cada diez de 1968. Tres de las variables salen de la «foto» que StatsBomb toma en el instante del remate, con la posición de todos los jugadores: cuántos rivales hay dentro del triángulo que forman el balón y los dos palos, si el arquero está dentro de ese triángulo y qué tan lejos está de su arco. La descarga las calcula por ustedes.
+
+Esa foto es reciente. Graham cuenta que los primeros datos solo decían quién remató y desde dónde, de modo que un remate lejano valía lo mismo con el arquero en su sitio que con el arco vacío. StatsBomb empezó en 2017 a anotar dónde estaba cada jugador en cada remate (capítulo 7).
 
 Los faltantes tienen explicación: los penales no traen foto. No es un faltante al azar, es un faltante por diseño, y se llena con la mediana de entrenamiento dentro de cada modelo. La variable `penal` le avisa al modelo que esos remates son otra cosa.
 
@@ -202,9 +213,6 @@ Se parte por partido y no por remate porque los remates de un mismo partido comp
 '''),
 ("code", r'''
 from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import roc_auc_score, brier_score_loss, log_loss
@@ -260,30 +268,68 @@ display(pd.DataFrame(errores).T.round(4))
 ("md", r'''
 La tasa base tiene un AUC de 0,5, porque no ordena nada, pero predice bien el **total** de goles. Esa propiedad vale mucho y es fácil perderla. Guárdenla para la sección 3.4.
 
-### 3.3 Cinco modelos y un protocolo para escoger
+Estas dos referencias son los primeros peldaños de una escalera que Graham describe en el capítulo 7. El modelo más pobre le da a todo remate el mismo 10 %. Su primer modelo en el Tottenham solo distinguía tres zonas de la cancha. Cada versión posterior aleja las probabilidades de ese promedio. Lo que sigue es subir la escalera y medir cuánto se gana en cada peldaño.
 
-| Modelo | Idea en una línea |
-|---|---|
-| Regresión logística | $\log\dfrac{p_i}{1-p_i}=\beta_0+x_i^\top\beta$ |
-| $k$ vecinos | La fracción de goles entre los $k$ remates de entrenamiento más parecidos |
-| Árbol de decisión | Preguntas de sí o no que van separando grupos con tasas de gol distintas |
-| Bosque aleatorio | El promedio de muchos árboles entrenados sobre remuestreos del dato |
-| *Gradient boosting* | Una suma de árboles pequeños, cada uno corrigiendo el error de los anteriores |
+### 3.3 El catálogo de modelos
+
+Esta es la celda del cuaderno que más les conviene aprender a tocar. `MODELOS` es un diccionario: a la izquierda va el nombre que ustedes le quieran poner al modelo y a la derecha el modelo de scikit-learn, con sus opciones. La función `tuberia` le pone delante a cada modelo los dos pasos que todos necesitan: llenar los faltantes con la mediana y, si el modelo lo pide, estandarizar las variables. Todo lo que viene después recorre el diccionario, así que agregar un modelo es agregar una línea.
+
+| Familia | Modelos del catálogo | Idea en una línea |
+|---|---|---|
+| Lineales | logística, logística apretada, discriminante lineal | $\log\dfrac{p_i}{1-p_i}=\beta_0+x_i^\top\beta$, con distintas maneras de estimar $\beta$ |
+| Probabilísticos | Bayes ingenuo | Supone que las variables son independientes dentro de cada clase |
+| De vecindad | $k$ vecinos | La fracción de goles entre los $k$ remates de entrenamiento más parecidos |
+| De margen y redes | máquina de soporte, red neuronal | Fronteras curvas entre goles y no goles |
+| Un árbol | árbol | Preguntas de sí o no que separan grupos con tasas de gol distintas |
+| Muchos árboles en paralelo | bosque, árboles extra | El promedio de muchos árboles distintos |
+| Muchos árboles en fila | boosting, boosting clásico, AdaBoost | Una suma de árboles pequeños, cada uno corrigiendo a los anteriores |
 
 Gana quien tenga menor pérdida logarítmica en **validación**, y se reporta lo que haga en **prueba**. Uso 150 vecinos y hojas grandes a propósito. Con un evento raro, un vecindario pequeño o una hoja pequeña pueden no tener ningún gol, y el modelo diría probabilidad cero. Los remates lejanos entran cerca de 2 de cada 100 veces, así que un vecindario de 150 espera unos tres goles y uno de 40 espera menos de uno. Una probabilidad de cero que resulta ser gol recibe un castigo enorme en la pérdida logarítmica, y con razón, porque es afirmar que algo es imposible.
+
+**Su turno.** Agreguen al menos tres modelos al diccionario y vuelvan a correr desde esta celda. Pueden repetir uno con otras opciones (por ejemplo, un bosque con hojas más pequeñas) o traer uno nuevo de la [lista de scikit-learn](https://scikit-learn.org/stable/supervised_learning.html). La única condición es que el modelo sepa dar probabilidades, es decir, que tenga `predict_proba`.
+
+**Predicción escrita:** de los trece, ¿cuál creen que gana en validación? ¿Será el mismo que gane en la prueba? **Mi apuesta:**
 '''),
 ("code", r'''
-def cinco_modelos(peso=None):
-    llenar = lambda: SimpleImputer(strategy="median")
-    return {
-        "logística": make_pipeline(llenar(), StandardScaler(), LogisticRegression(max_iter=2000, class_weight=peso)),
-        "k vecinos": make_pipeline(llenar(), StandardScaler(), KNeighborsClassifier(n_neighbors=150)),
-        "árbol": make_pipeline(llenar(), DecisionTreeClassifier(max_depth=4, min_samples_leaf=20, class_weight=peso, random_state=0)),
-        "bosque": make_pipeline(llenar(), RandomForestClassifier(n_estimators=400, min_samples_leaf=10, class_weight=peso, random_state=0, n_jobs=-1)),
-        "boosting": make_pipeline(llenar(), HistGradientBoostingClassifier(max_depth=3, learning_rate=0.05, max_iter=150, class_weight=peso, random_state=0)),
-    }
+from sklearn.base import clone
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import (RandomForestClassifier, ExtraTreesClassifier, HistGradientBoostingClassifier,
+                              GradientBoostingClassifier, AdaBoostClassifier)
 
-for nombre, modelo in cinco_modelos().items():
+def tuberia(modelo, estandarizar=True):
+    """Llena los faltantes con la mediana, estandariza si el modelo lo necesita y pone el modelo al final."""
+    pasos = [SimpleImputer(strategy="median")] + ([StandardScaler()] if estandarizar else []) + [modelo]
+    return make_pipeline(*pasos)
+
+MODELOS = {
+    "logística":            tuberia(LogisticRegression(max_iter=2000)),
+    "logística apretada":   tuberia(LogisticRegression(C=0.05, max_iter=2000)),              # C pequeño: coeficientes más encogidos
+    "discriminante lineal": tuberia(LinearDiscriminantAnalysis()),
+    "Bayes ingenuo":        tuberia(GaussianNB()),
+    "k vecinos":            tuberia(KNeighborsClassifier(n_neighbors=150)),
+    "máquina de soporte":   tuberia(SVC(probability=True, random_state=0)),
+    "red neuronal":         tuberia(MLPClassifier(hidden_layer_sizes=(16,), alpha=1.0, max_iter=2000, random_state=0)),
+    "árbol":                tuberia(DecisionTreeClassifier(max_depth=4, min_samples_leaf=20, random_state=0), estandarizar=False),
+    "bosque":               tuberia(RandomForestClassifier(n_estimators=400, min_samples_leaf=10, random_state=0, n_jobs=-1), estandarizar=False),
+    "árboles extra":        tuberia(ExtraTreesClassifier(n_estimators=400, min_samples_leaf=10, random_state=0, n_jobs=-1), estandarizar=False),
+    "boosting":             tuberia(HistGradientBoostingClassifier(max_depth=3, learning_rate=0.05, max_iter=150, random_state=0), estandarizar=False),
+    "boosting clásico":     tuberia(GradientBoostingClassifier(n_estimators=150, max_depth=2, learning_rate=0.05, random_state=0), estandarizar=False),
+    "AdaBoost":             tuberia(AdaBoostClassifier(n_estimators=100, learning_rate=0.5, random_state=0), estandarizar=False),
+    # Agreguen aquí sus modelos, uno por línea:   "mi modelo": tuberia(...),
+}
+print(f"Modelos en el catálogo: {len(MODELOS)}")
+'''),
+("md", r'''
+La celda siguiente es el protocolo, y no hay que cambiarle nada. Toma cada modelo del catálogo, lo entrena con el tramo de entrenamiento, lo mide en validación, lo vuelve a entrenar con entrenamiento y validación juntos, y lo mide en la prueba.
+'''),
+("code", r'''
+for nombre, receta in MODELOS.items():
+    modelo = clone(receta)                               # una copia sin entrenar, para no ensuciar el catálogo
     modelo.fit(X[E], y[E])
     en_validacion = puntuar(y[V], modelo.predict_proba(X[V])[:, 1])["pérdida logarítmica"]
     modelo.fit(X[E | V], y[E | V])
@@ -291,8 +337,8 @@ for nombre, modelo in cinco_modelos().items():
     errores[nombre] = {"validación": en_validacion, **puntuar(y[P], probabilidades[nombre])}
 todos = pd.DataFrame(errores).T
 
-todos[["validación", "pérdida logarítmica"]].rename(columns={"pérdida logarítmica": "prueba"}).sort_values("validación").plot.barh(figsize=(9, 4), color=["#1D4E89", "#1B998B"])
-plt.xlabel("pérdida logarítmica (menos es mejor)"); plt.title("Siete candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
+todos[["validación", "pérdida logarítmica"]].rename(columns={"pérdida logarítmica": "prueba"}).sort_values("validación").plot.barh(figsize=(9, 0.42 * len(todos) + 1.5), color=["#1D4E89", "#1B998B"])
+plt.xlabel("pérdida logarítmica (menos es mejor)"); plt.title(f"{len(todos)} candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
 display(todos.sort_values("validación").round(4))
 '''),
 ("md", r'''
@@ -310,7 +356,7 @@ prueba_75 = puntuar(y[P], p_75)["pérdida logarítmica"]
 
 print(f"k vecinos con 75  | validación: {validacion_75:.4f} | prueba: {prueba_75:.4f}")
 print(f"k vecinos con 150 | validación: {todos.loc['k vecinos', 'validación']:.4f} | prueba: {todos.loc['k vecinos', 'pérdida logarítmica']:.4f}")
-print(f"Mejor de los siete en validación: {todos['validación'].min():.4f} ({todos['validación'].idxmin()})")
+print(f"Mejor de todos en validación: {todos['validación'].min():.4f} ({todos['validación'].idxmin()})")
 goles = np.asarray(y[P]) == 1
 print(f"Goles de la prueba a los que el modelo de 75 les dio probabilidad cero: {int((p_75[goles] == 0).sum())} de {int(goles.sum())}")
 '''),
@@ -334,7 +380,34 @@ La regla es la de la clase 1: si el ganador de validación no le gana en la prue
 
 Lean los tres renglones. La distancia sola ya recorre buena parte del camino desde la tasa base. En el Mundial de 2022 el ganador mejora un poco más. Y el modelo de StatsBomb, que es el producto de una empresa que vive de esto y que se entrenó con muchos más remates que los de un Mundial, queda por delante. La distancia entre el nuestro y el de ellos es lo que cuestan más datos y más variables.
 
-Fíjense también en que las diferencias entre los cinco modelos en validación son pequeñas. Con unas decenas de goles en validación, un gol de más o de menos cambia el orden. Esa fragilidad es propia de los eventos raros.
+### Con tantos candidatos, ¿cuánto del ganador es azar?
+
+Ordeno los modelos del catálogo dos veces, por su puesto en validación y por su puesto en la prueba. Si la validación sirviera para escoger sin error, los puntos caerían sobre la diagonal.
+'''),
+("code", r'''
+del_catalogo = todos.loc[list(MODELOS)]
+puestos = del_catalogo[["validación", "pérdida logarítmica"]].rank().rename(columns={"pérdida logarítmica": "prueba"})
+plt.figure(figsize=(6.5, 6))
+plt.plot([1, len(puestos)], [1, len(puestos)], color="#9AA5B1", ls=":")
+plt.scatter(puestos["validación"], puestos["prueba"], s=60, color="#1D4E89", zorder=3)
+for nombre, (pv, pp) in puestos.iterrows():
+    plt.annotate(nombre, (pv, pp), xytext=(6, 4), textcoords="offset points", fontsize=8)
+plt.scatter(*puestos.loc[mejor], s=140, facecolors="none", edgecolors="#D7263D", lw=2, zorder=4)
+plt.xlabel("puesto en validación (1 es el mejor)"); plt.ylabel("puesto en prueba"); plt.title("¿El orden de validación se sostiene en la prueba?")
+plt.gca().invert_xaxis(); plt.gca().invert_yaxis(); plt.show()
+separacion = del_catalogo["validación"].sort_values()
+print(f"Correlación de Spearman entre los dos órdenes: {puestos['validación'].corr(puestos['prueba'], method='spearman'):.2f}")
+print(f"Goles en validación: {int(y[V].sum())} | distancia en validación entre el primero y el quinto: {separacion.iloc[4] - separacion.iloc[0]:.4f}")
+print(f"Puesto en la prueba del ganador de validación ({mejor}): {int(puestos.loc[mejor, 'prueba'])} de {len(puestos)}")
+'''),
+("md", r'''
+El círculo rojo es el ganador de validación. Respondan con la gráfica y los tres renglones a la vista.
+
+- ¿El ganador de validación fue también el mejor en la prueba? **Mi lectura:**
+- La validación tiene unas pocas decenas de goles. Si uno solo de esos goles hubiera pegado en el palo, ¿cambiaría el orden de los cinco primeros? **Mi respuesta:**
+- Cuando ustedes agreguen modelos, el mejor puntaje de validación solo puede mejorar o quedarse igual. ¿Eso quiere decir que el modelo final es mejor? **Mi respuesta:**
+
+Con muchos candidatos y pocos goles, el primer puesto de validación tiene una parte de mérito y una parte de suerte. Es la misma idea con la que Graham mira a los futbolistas: de un delantero con cuatro goles en cuatro partidos se sabe menos que de uno con treinta en cuarenta (capítulo 5). En el gemelo van a repetir esta gráfica con una liga entera, que tiene diez veces más goles, y van a ver qué le pasa.
 
 ### 3.4 La trampa de la clase: balancear rompe la probabilidad
 
@@ -348,23 +421,30 @@ def logit(p):
     return np.log(p / (1 - p))
 
 def armar(nombre, peso=None):
-    """El modelo con ese nombre y las columnas que usa. La línea base de distancia es una logística de una sola variable."""
+    """Una copia sin entrenar del modelo con ese nombre, y las columnas que usa. `peso="balanced"` pide balancear las clases."""
     if nombre == "solo distancia":
         return make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000, class_weight=peso)), ["distancia_m"]
-    return cinco_modelos(peso)[nombre], variables
+    modelo = clone(MODELOS[nombre])
+    if peso is not None:
+        modelo.steps[-1][1].set_params(class_weight=peso)
+    return modelo, variables
 
-(normal, columnas), (balanceado, _) = armar(elegido), armar(elegido, peso="balanced")
-normal.fit(X[columnas][E], y[E]); balanceado.fit(X[columnas][E], y[E])
-p_normal, p_balanceado = normal.predict_proba(X[columnas][P])[:, 1], balanceado.predict_proba(X[columnas][P])[:, 1]
+# No todos los modelos del catálogo saben balancear. Si el elegido no sabe, la demostración se hace con la logística.
+sabe_balancear = elegido == "solo distancia" or "class_weight" in MODELOS[elegido].steps[-1][1].get_params()
+demostracion = elegido if sabe_balancear else "logística"
+(normal, columnas_demo), (balanceado, _) = armar(demostracion), armar(demostracion, peso="balanced")
+normal.fit(X[columnas_demo][E], y[E]); balanceado.fit(X[columnas_demo][E], y[E])
+p_normal, p_balanceado = normal.predict_proba(X[columnas_demo][P])[:, 1], balanceado.predict_proba(X[columnas_demo][P])[:, 1]
+columnas = armar(elegido)[1]
 
 # Recalibración de Platt: una regresión logística de una variable, ajustada en validación, que corrige la escala.
-platt = LogisticRegression().fit(logit(balanceado.predict_proba(X[columnas][V])[:, 1]).reshape(-1, 1), y[V])
+platt = LogisticRegression().fit(logit(balanceado.predict_proba(X[columnas_demo][V])[:, 1]).reshape(-1, 1), y[V])
 p_recalibrado = platt.predict_proba(logit(p_balanceado).reshape(-1, 1))[:, 1]
 
 trampa = pd.DataFrame({"sin balancear": puntuar(y[P], p_normal), "balanceado": puntuar(y[P], p_balanceado),
                        "balanceado y recalibrado": puntuar(y[P], p_recalibrado)}).T
 trampa["sensibilidad con umbral 0,5"] = [(p[y[P] == 1] >= 0.5).mean() for p in (p_normal, p_balanceado, p_recalibrado)]
-print("Modelo:", elegido, "(entrenado solo con el tramo de entrenamiento, para dejar la validación libre)")
+print("Modelo:", demostracion, "(entrenado solo con el tramo de entrenamiento, para dejar la validación libre)")
 display(trampa.round(4))
 '''),
 ("md", r'''
@@ -407,7 +487,7 @@ La curva del modelo balanceado queda muy por debajo de la diagonal: promete much
 Con las variables estandarizadas, $e^{\beta_j}$ es la razón de probabilidades por cada desviación estándar de la variable $j$, con las demás quietas. La segunda gráfica muestra la probabilidad que el modelo elegido le da a un remate de pie, de frente al arco y en juego, según la distancia.
 '''),
 ("code", r'''
-explicativo = cinco_modelos()["logística"].fit(X[E | V], y[E | V])
+explicativo = clone(MODELOS["logística"]).fit(X[E | V], y[E | V])
 razones = pd.Series(np.exp(explicativo[-1].coef_[0]), index=variables).sort_values()
 
 modelo_final = armar(elegido)[0].fit(X[columnas][E | V], y[E | V])
@@ -439,9 +519,11 @@ Y lo que se ve es asociación. Que los remates bajo presión entren menos no dic
 
 ### 4.1 Decidir: ¿a quién mandar a observar?
 
+Graham cuenta sus errores con la misma calma que sus aciertos. Uno de los primeros fue Giovani dos Santos. Lo recomendó al Tottenham porque el modelo lo ponía muy arriba, pero lo había visto jugar unos 1.400 minutos, cerca de quince partidos, y no advirtió lo poco que era eso (capítulo 2). Un delantero que juega los siete partidos de un Mundial no llega ni a la mitad de esos minutos. Esa es la cuenta que hay que tener en la cabeza durante toda esta sección.
+
 Para juzgar a un delantero no sirve el modelo que ya vio sus remates. Uso predicciones **fuera de muestra**: parto los partidos en ocho grupos, y la probabilidad de cada remate la calcula un modelo entrenado con los otros siete. Así cada remate recibe un número de un modelo que no lo conocía.
 
-Con esas probabilidades, el gol esperado de un jugador es la suma de la sección 1. Para saber si sus goles se salen de lo esperable, simulo: cada remate entra con su probabilidad, diez mil veces, y miro entre qué valores cae el total el 90 % de las veces. Si los goles reales caen dentro de esa franja, la diferencia con el gol esperado se puede explicar por la suerte de un torneo corto.
+Con esas probabilidades, el gol esperado de un jugador es la suma de la sección 1. Dejo por fuera los penales, como hace Graham al comparar a Messi con Ronaldo (capítulo 12), porque un penal dice más de quién lo provocó que de quién lo patea. Para saber si los goles de un jugador se salen de lo esperable, simulo: cada remate entra con su probabilidad, diez mil veces, y miro entre qué valores cae el total el 90 % de las veces. Si los goles reales caen dentro de esa franja, la diferencia con el gol esperado se puede explicar por la suerte de un torneo corto.
 '''),
 ("code", r'''
 from sklearn.model_selection import GroupKFold
@@ -453,24 +535,48 @@ juego["xg"] = fuera_de_muestra
 total = puntuar(y, fuera_de_muestra)
 print(f"Todo el torneo, fuera de muestra: predice {total['goles que predice']:.1f} goles y hubo {total['goles que hubo']} | pérdida logarítmica {total['pérdida logarítmica']:.4f} | StatsBomb: {puntuar(y, juego['statsbomb_xg'])['pérdida logarítmica']:.4f}")
 
+sin_penales = juego[juego["tipo"] != "Penalty"]
 sorteo = np.random.default_rng(0)
 def franja(probabilidades_jugador):
     simulados = (sorteo.random((10000, len(probabilidades_jugador))) < probabilidades_jugador.values).sum(axis=1)
     return np.percentile(simulados, [5, 95])
 
-jugadores = juego.groupby(["jugador", "equipo"]).agg(remates=("gol", "size"), goles=("gol", "sum"), xg=("xg", "sum"), xg_statsbomb=("statsbomb_xg", "sum")).reset_index()
-jugadores = jugadores.sort_values("xg", ascending=False).head(12).reset_index(drop=True)
-franjas = [franja(juego.loc[juego["jugador"] == nombre, "xg"]) for nombre in jugadores["jugador"]]
-jugadores["franja de 90 %"] = [f"{int(a)} a {int(b)}" for a, b in franjas]
-jugadores["dentro de la franja"] = [a <= g <= b for g, (a, b) in zip(jugadores["goles"], franjas)]
-display(jugadores.round(2))
-print("\nLos que más goles hicieron:")
-print(juego.groupby("jugador").agg(goles=("gol", "sum"), xg=("xg", "sum"), remates=("gol", "size")).sort_values("goles", ascending=False).head(6).round(2).to_string())
+jugadores = sin_penales.groupby(["jugador", "equipo"]).agg(remates=("gol", "size"), goles=("gol", "sum"), xg=("xg", "sum")).reset_index()
+jugadores["xg por remate"] = jugadores["xg"] / jugadores["remates"]
+jugadores["goles menos xg"] = jugadores["goles"] - jugadores["xg"]
+franjas = {nombre: franja(sin_penales.loc[sin_penales["jugador"] == nombre, "xg"]) for nombre in jugadores["jugador"]}
+jugadores["franja de 90 %"] = [f"{int(franjas[n][0])} a {int(franjas[n][1])}" for n in jugadores["jugador"]]
+jugadores["dentro de la franja"] = [franjas[n][0] <= g <= franjas[n][1] for n, g in zip(jugadores["jugador"], jugadores["goles"])]
+
+por_goles = jugadores.sort_values(["goles", "xg"], ascending=False).head(8)
+por_ocasiones = jugadores.sort_values("xg", ascending=False).head(8)
+print("\nLista A. Los que más goles hicieron (sin penales):"); display(por_goles.round(2).reset_index(drop=True))
+print("Lista B. Los que más ocasiones tuvieron (gol esperado, sin penales):"); display(por_ocasiones.round(2).reset_index(drop=True))
+en_las_dos = sorted(set(por_goles["jugador"]) & set(por_ocasiones["jugador"]))
+print(f"En las dos listas: {len(en_las_dos)} de 8 | goleadores de la lista A dentro de su franja: {int(por_goles['dentro de la franja'].sum())} de 8")
 '''),
 ("md", r'''
-La tabla de arriba ordena por ocasiones y la de abajo por goles. No coinciden del todo. El argumento para la dirección deportiva es que las ocasiones se repiten de un torneo a otro más que la puntería, y que un club paga por lo que se repite. Este cuaderno no puede comprobar esa afirmación, porque tiene un solo torneo. Va como supuesto en la decisión y como pregunta en los riesgos.
+La lista A ordena por goles y la lista B por ocasiones. No coinciden del todo. Miren también lo anchas que son las franjas: con quince o veinte remates, hacer dos goles o hacer seis puede ser el mismo jugador con distinta suerte.
 
-Fíjense en lo anchas que son las franjas. Con veinte o treinta remates, hacer tres goles o hacer siete puede ser el mismo jugador con distinta suerte.
+Hay una segunda manera de mirar a un delantero, que tampoco es contar goles. Dos jugadores pueden sumar el mismo gol esperado por caminos opuestos, uno rematando mucho desde lejos y otro rematando poco desde cerca. Graham lo ilustra con Coutinho, que tenía talento para el remate lejano y aun así pateaba, casi siempre, remates de baja probabilidad (capítulo 7). Y recuerda que un remate suele terminar la jugada, así que cada intento desde lejos le cuesta una opción a un compañero (capítulo 8).
+'''),
+("code", r'''
+frecuentes = jugadores[jugadores["remates"] >= 8]
+plt.figure(figsize=(9, 5.5))
+plt.scatter(frecuentes["remates"], frecuentes["xg por remate"] * 100, s=30 + 60 * frecuentes["goles"], color="#1D4E89", alpha=0.55)
+for _, fila in frecuentes.sort_values("xg", ascending=False).head(10).iterrows():
+    plt.annotate(fila["jugador"], (fila["remates"], fila["xg por remate"] * 100), xytext=(6, 4), textcoords="offset points", fontsize=7)
+plt.axhline(sin_penales["xg"].mean() * 100, color="#9AA5B1", ls=":"); plt.text(frecuentes["remates"].max() * 0.62, sin_penales["xg"].mean() * 100, "promedio del torneo", fontsize=8, color="#9AA5B1", va="bottom")
+plt.xlabel("remates en el torneo (volumen)"); plt.ylabel("gol esperado por remate, % (calidad)")
+plt.title("Volumen contra calidad: jugadores con ocho remates o más\nEl tamaño del punto son los goles"); plt.show()
+'''),
+("md", r'''
+- ¿Qué jugador remata mucho y desde posiciones pobres? ¿Cuál remata poco y desde posiciones muy buenas? **Mi lectura:**
+- Si su club necesita gol, ¿a cuál de los dos mandan a observar primero? **Mi respuesta:**
+
+**Lo que dice el libro y lo que no.** El argumento para la dirección deportiva es que las ocasiones se repiten de un torneo a otro más que la puntería, y que un club paga por lo que se repite. Graham lo respalda con equipos: revisó nueve temporadas de la Bundesliga, y de 69 equipos que sacaron más puntos de los que merecían sus ocasiones, 34 sacaron menos al año siguiente (capítulo 4). Pero no dice que la puntería sea pura suerte. Afirma que la habilidad para definir existe, y que en el Liverpool cada jugador tenía una estimación propia de esa habilidad (capítulo 7). Tampoco cuenta que el Liverpool fichara mirando la diferencia entre goles y gol esperado. Su herramienta principal medía todo lo que un jugador hace con el balón, y a Firmino y a Mané los ficharon por lo que hacían además de marcar (capítulos 1, 4 y 8). El ejercicio de hoy, pasar del gol esperado de un torneo a una lista de fichajes, es nuestro. Este cuaderno no puede comprobar que las ocasiones se repiten, porque tiene un solo torneo. Va como supuesto en la decisión y como pregunta en los riesgos.
+
+Un detalle de cómo trabajaban, para que lo copien. Los datos reducían miles de jugadores a una docena, y a cada uno de esa docena le veían entre veinte y treinta partidos en video (capítulos 2 y 8). La lista que sale de este cuaderno es eso: a quién vale la pena ir a ver.
 
 ### La decisión en tres frases
 
@@ -479,6 +585,10 @@ Escríbanla para un director deportivo que sabe de fútbol y no sabe qué es una
 1. **Recomendación:**
 2. **Evidencia:**
 3. **Riesgo:**
+
+**Premortem.** Antes de fichar a un delantero, en el Liverpool hacían un ejercicio: imaginar que el fichaje ya había fracasado y preguntarse por qué (capítulo 4). Háganlo con el primer nombre de su lista. Ha pasado un año y el jugador no rindió. Escriban la razón más probable, y digan si una tabla de remates la habría podido ver.
+
+4. **Premortem:**
 
 ### 4.2 Bitácora de decisiones
 
@@ -491,7 +601,9 @@ Escríbanla para un director deportivo que sabe de fútbol y no sabe qué es una
 | Pérdida logarítmica para escoger | Exactitud | Con 11 % de goles la exactitud premia decir siempre que no |
 | 150 vecinos y hojas grandes | Valores por defecto; 75 vecinos | Un vecindario sin goles da probabilidad cero. El 150 se fijó después de ver caer al de 75 en la prueba, y esa es una falta contra el protocolo que queda registrada |
 | No balancear las clases | `class_weight="balanced"` | Infla las probabilidades y la suma deja de ser un número de goles |
+| Trece modelos en el catálogo | Escoger entre dos o tres | Comparar es barato; el costo es que el ganador de validación tiene una parte de suerte, y se mide con la gráfica de puestos |
 | Predicciones fuera de muestra para juzgar jugadores | Las del modelo final | Un modelo no debe calificar los remates con que se entrenó |
+| Penales fuera de la comparación entre jugadores | Contarlos | Un penal dice más de quién lo provocó que de quién lo patea |
 | Franja por simulación | Comparar goles con xG a ojo | Con pocos remates la suerte pesa mucho |
 
 ### 4.3 Riesgos y mantenimiento
@@ -511,20 +623,11 @@ print("Fuente: StatsBomb Open Data (github.com/statsbomb/open-data). Se cita a S
 procedencia()["remates_mundial"]
 '''),
 ("md", r'''
-### 4.5 Cambien una línea
+### 4.5 Lo que sigue: el gemelo
 
-Vuelvan a la celda donde dice `COMPETICION, TEMPORADA = 43, 106`, pongan `COMPETICION, TEMPORADA = 223, 282` y corran todo de nuevo con *Entorno de ejecución*, *Ejecutar todo*. Esa es la Copa América de 2024. Si prefieren, el Mundial femenino de 2023 es `72, 107`. Llenen la tabla con sus dos corridas.
+En la segunda mitad de la clase, cada uno repite este camino con la **Premier League 2015/2016**, la temporada en que el Leicester City salió campeón contra todos los pronósticos. Son 380 partidos en vez de 64, y cerca de diez veces más goles. Al final cambiarán una línea para correr lo mismo con la Copa América de 2024.
 
-| | Mundial 2022 | Su torneo |
-|---|---|---|
-| Partidos, remates en juego y goles | | |
-| Tasa de gol | | |
-| Ganador en validación | | |
-| Pérdida logarítmica en prueba: ganador, solo distancia y StatsBomb | | |
-| Goles que predice el modelo balanceado en la prueba, y goles que hubo | | |
-| Jugador con más gol esperado, sus goles y su franja | | |
-
-Con la tabla llena, respondan en tres líneas. ¿Qué resultados se repiten de un torneo al otro y cuáles cambian? ¿Qué le pasa al protocolo de validación cuando el torneo tiene la mitad de los partidos? **Mi respuesta:**
+Lleven estas tres preguntas al gemelo. ¿Los modelos que hoy quedaron arriba siguen arriba con una liga entera? ¿La gráfica de puestos se acerca a la diagonal cuando hay más goles? ¿Qué tan anchas quedan las franjas de un delantero que remató más de cien veces?
 '''),
 ]
 
