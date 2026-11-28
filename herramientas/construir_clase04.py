@@ -137,7 +137,7 @@ Comparen con su primera apuesta, y con el uno de cada diez de 1968. Tres de las 
 
 Esa foto es reciente. Graham cuenta que los primeros datos solo decían quién remató y desde dónde, de modo que un remate lejano valía lo mismo con el arquero en su sitio que con el arco vacío. StatsBomb empezó en 2017 a anotar dónde estaba cada jugador en cada remate (capítulo 7).
 
-Los faltantes tienen explicación: los penales no traen foto. No es un faltante al azar, es un faltante por diseño, y se llena con la mediana de entrenamiento dentro de cada modelo. La variable `penal` le avisa al modelo que esos remates son otra cosa.
+Los faltantes tienen explicación: son penales, y casi ningún penal trae foto. El faltante no es al azar, viene del diseño del dato, y se llena con la mediana de entrenamiento dentro de cada modelo. La variable `penal` le avisa al modelo que esos remates son otra cosa.
 
 ### 2.2 Conocer el dato antes de modelarlo
 
@@ -407,7 +407,7 @@ El círculo rojo es el ganador de validación. Respondan con la gráfica y los t
 - La validación tiene unas pocas decenas de goles. Si uno solo de esos goles hubiera pegado en el palo, ¿cambiaría el orden de los cinco primeros? **Mi respuesta:**
 - Cuando ustedes agreguen modelos, el mejor puntaje de validación solo puede mejorar o quedarse igual. ¿Eso quiere decir que el modelo final es mejor? **Mi respuesta:**
 
-Con muchos candidatos y pocos goles, el primer puesto de validación tiene una parte de mérito y una parte de suerte. Es la misma idea con la que Graham mira a los futbolistas: de un delantero con cuatro goles en cuatro partidos se sabe menos que de uno con treinta en cuarenta (capítulo 5). En el gemelo van a repetir esta gráfica con una liga entera, que tiene diez veces más goles, y van a ver qué le pasa.
+Con muchos candidatos y pocos goles, el primer puesto de validación tiene una parte de mérito y una parte de suerte. Es la misma idea con la que Graham mira a los futbolistas: de un delantero con cuatro goles en cuatro partidos se sabe menos que de uno con treinta en cuarenta (capítulo 5). En el gemelo van a repetir esta gráfica con una liga entera, que tiene casi seis veces más goles, y van a ver qué le pasa.
 
 ### 3.4 La trampa de la clase: balancear rompe la probabilidad
 
@@ -625,7 +625,7 @@ procedencia()["remates_mundial"]
 ("md", r'''
 ### 4.5 Lo que sigue: el gemelo
 
-En la segunda mitad de la clase, cada uno repite este camino con la **Premier League 2015/2016**, la temporada en que el Leicester City salió campeón contra todos los pronósticos. Son 380 partidos en vez de 64, y cerca de diez veces más goles. Al final cambiarán una línea para correr lo mismo con la Copa América de 2024.
+En la segunda mitad de la clase, cada uno repite este camino con la **Premier League 2015/2016**, la temporada en que el Leicester City salió campeón contra todos los pronósticos. Son 380 partidos en vez de 64, y casi seis veces más goles. Al final cambiarán una línea para correr lo mismo con la Copa América de 2024.
 
 Lleven estas tres preguntas al gemelo. ¿Los modelos que hoy quedaron arriba siguen arriba con una liga entera? ¿La gráfica de puestos se acerca a la diagonal cuando hay más goles? ¿Qué tan anchas quedan las franjas de un delantero que remató más de cien veces?
 '''),
