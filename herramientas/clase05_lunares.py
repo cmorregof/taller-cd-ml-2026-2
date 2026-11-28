@@ -12,11 +12,18 @@ Este cuaderno lo resuelvo yo en vivo durante la primera mitad de la clase. Usted
 
 | Ficha | |
 |---|---|
-| **Objetivo pedagógico** | Clasificar imágenes con una red preentrenada usada como extractor fijo de características, comparar cinco clasificadores contra una línea base seria y medir con números cuánto se infla el resultado cuando dos fotos de la misma lesión caen a lados distintos de la partición. |
+| **Objetivo pedagógico** | Clasificar imágenes con una red preentrenada usada como extractor fijo de características, comparar un catálogo de clasificadores contra una línea base seria y medir con números cuánto se infla el resultado cuando dos fotos de la misma lesión caen a lados distintos de la partición. |
 | **Enfoque** | Machine Learning. |
 | **Resultados de aprendizaje** | 1 (formular el problema y la métrica), 2 (seleccionar y preparar datos), 4 (implementar y evaluar un modelo), 5 (comunicar a quien no es técnico) y 6 (reflexión ética, técnica y operativa). |
 | **Uso de IA** | Pueden pedirle a Claude que explique una celda, que escriba una gráfica o que proponga otro clasificador. Deben poder explicar sin ayuda qué es una característica extraída por una red preentrenada, por qué se parte por lesión y no por imagen, cuánto cambió el resultado al partir mal y qué significan la sensibilidad y la especificidad que reportan. |
 | **Entregable** | Este cuaderno corrido de principio a fin en su portafolio, con las predicciones escritas, la decisión en tres frases y la tabla de la variante llenas. |
+'''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** La tabla y las fotos de hoy salen de [HAM10000 en Harvard Dataverse](https://doi.org/10.7910/DVN/DBW86T). Los autores describen cómo las reunieron en [su artículo de *Scientific Data*](https://doi.org/10.1038/sdata.2018.161). Abran los dos enlaces y explórenlos cinco minutos antes de correr nada. Respondan mirando la fuente:
+>
+> - ¿Quién publica el conjunto y en qué año lo depositó?
+> - ¿Qué es una fila del archivo de metadatos: una persona, una lesión o una imagen?
+> - ¿Qué licencia tiene y qué uso prohíbe?
 '''),
 ("code", ARRANQUE),
 ("md", r'''
@@ -63,12 +70,10 @@ Escriban su apuesta antes de ver un solo dato. Después la comparamos con lo que
 ("md", r'''
 ## 2. Datos
 
-Una línea trae el dato desde Harvard Dataverse. La tabla llega completa, con las 10.015 filas. Las fotos no: los dos archivos de imágenes pesan 2,8 GB, así que la función baja solo el subconjunto que vamos a usar (más abajo lo defino y lo justifico) y guarda cada foto reducida a 256 píxeles en su lado corto. La primera vez tarda entre dos y tres minutos.
+Una línea trae el dato. La tabla llega completa, con una fila por cada imagen del conjunto. Las fotos que la acompañan son solo las del subconjunto que vamos a modelar, que defino y justifico más abajo. Les aviso que no trabajamos con todas las fotos del conjunto, porque pasarlas todas por una red neuronal sin GPU tarda más de lo que dura la clase. La primera vez la celda tarda entre dos y tres minutos.
 '''),
 ("code", r'''
-inicio = time.time()
 tabla = descargar("ham10000")
-print(f"Tiempo: {time.time() - inicio:.0f} s")
 print(len(tabla), "imágenes |", tabla["lesion_id"].nunique(), "lesiones |", int(tabla["en_muestra"].sum()), "fotos descargadas")
 tabla.head()
 '''),
@@ -344,34 +349,64 @@ display(pd.DataFrame(resultados).T.round(3))
 ("md", r'''
 Comparen con su primera apuesta. La edad sola ordena bastante bien a estos pacientes. Esa es la cifra que la foto tiene que vencer.
 
-### 3.3 Cinco clasificadores sobre las mismas características
+### 3.3 El catálogo de modelos
 
-Los cinco reciben la misma tabla de 512 columnas. Cambia la manera de trazar la frontera.
+La celda siguiente es el catálogo de candidatos. Es un diccionario, `MODELOS`, con una línea por modelo.
+
+- El texto entre comillas es el **nombre** con el que el modelo aparece en las tablas y en las gráficas.
+- `make_pipeline(...)` encadena la **preparación** (por ejemplo `StandardScaler()`, que estandariza cada columna) con el **clasificador**, que va al final. Así la preparación se ajusta solo con las fotos de entrenamiento.
+- Para **agregar un modelo** escriban una línea nueva con otro nombre, importen su clase de scikit-learn al comienzo de la celda y corran el cuaderno desde ahí. Las celdas que siguen recorren lo que haya en el diccionario y no hay que tocarlas.
+
+Todos los candidatos reciben la misma tabla de 512 columnas. Cambia la manera de trazar la frontera.
 
 | Modelo | Idea en una línea |
 |---|---|
 | Regresión logística | Frontera lineal, $P(Y=1\mid z)=\sigma(\beta_0+z^\top\beta)$, con castigo $\lVert\beta\rVert_2^2$ fuerte porque hay 512 columnas y pocas fotos |
-| Máquina de soporte vectorial | Frontera curva con núcleo gaussiano, $K(z,z')=\exp(-\gamma\lVert z-z'\rVert^2)$ |
-| $k$ vecinos | El puntaje es la fracción de melanomas entre las $k=15$ fotos de entrenamiento más parecidas |
+| Regresión logística con castigo débil | La misma frontera lineal con cien veces menos castigo, para ver cuánto pesa la regularización |
+| $k$ vecinos, con $k=5$ y con $k=15$ | El puntaje es la fracción de melanomas entre las $k$ fotos de entrenamiento más parecidas |
+| Árbol de decisión | Parte el espacio con preguntas sucesivas sobre una columna a la vez |
 | Bosque aleatorio | Promedia 200 árboles entrenados sobre remuestreos del dato |
+| *ExtraTrees* | Otro promedio de 200 árboles, con los cortes de cada pregunta escogidos al azar |
 | *Gradient boosting* | Suma árboles pequeños, cada uno corrigiendo al anterior. Lo alimento con los 50 primeros componentes principales para que sea rápido |
+| Bayes ingenuo | Supone que las columnas son independientes y normales dentro de cada clase. Recibe los 50 primeros componentes principales |
+| Análisis discriminante lineal | Supone una normal por clase con la misma covarianza, estimada con encogimiento |
+| Máquina de soporte vectorial | Frontera curva con núcleo gaussiano, $K(z,z')=\exp(-\gamma\lVert z-z'\rVert^2)$ |
+| Red neuronal pequeña | Una capa oculta de 64 neuronas entrenada sobre las características |
 
 Los hiperparámetros quedan fijos y a la vista. Afinarlos es legítimo si se hace mirando solo la validación.
+
+**Ejercicio.** Agreguen al menos tres modelos más de scikit-learn y vuelvan a correr. Pueden cambiar hiperparámetros de un modelo que ya esté o traer una clase nueva. No le cambien el nombre a `"logística"`, porque más abajo la uso por ese nombre.
 '''),
 ("code", r'''
-from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 
-def cinco_modelos():
-    return {
-        "logística": make_pipeline(StandardScaler(), LogisticRegression(C=0.01, max_iter=2000)),
-        "SVM": make_pipeline(StandardScaler(), SVC(C=1.0, kernel="rbf")),
-        "k vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=15)),
-        "bosque": RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=SEMILLA),
-        "boosting": make_pipeline(StandardScaler(), PCA(n_components=50, random_state=SEMILLA),
-                                  HistGradientBoostingClassifier(random_state=SEMILLA)),
-    }
+MODELOS = {
+    "logística": make_pipeline(StandardScaler(), LogisticRegression(C=0.01, max_iter=2000)),
+    "logística, castigo débil": make_pipeline(StandardScaler(), LogisticRegression(C=1.0, max_iter=2000)),
+    "5 vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=5)),
+    "15 vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=15)),
+    "árbol": DecisionTreeClassifier(max_depth=5, min_samples_leaf=20, random_state=SEMILLA),
+    "bosque": RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=SEMILLA),
+    "ExtraTrees": ExtraTreesClassifier(n_estimators=200, n_jobs=-1, random_state=SEMILLA),
+    "boosting": make_pipeline(StandardScaler(), PCA(n_components=50, random_state=SEMILLA), HistGradientBoostingClassifier(random_state=SEMILLA)),
+    "Bayes ingenuo": make_pipeline(StandardScaler(), PCA(n_components=50, random_state=SEMILLA), GaussianNB()),
+    "discriminante lineal": make_pipeline(StandardScaler(), LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto")),
+    "SVM": make_pipeline(StandardScaler(), SVC(C=1.0, kernel="rbf")),
+    "red pequeña": make_pipeline(StandardScaler(), MLPClassifier(hidden_layer_sizes=(64,), alpha=1.0, max_iter=500, random_state=SEMILLA)),
+}
+print(len(MODELOS), "modelos en el catálogo:", ", ".join(MODELOS))
+'''),
+("md", r'''
+La celda siguiente entrena cada modelo del catálogo con el tramo de entrenamiento y lo mide en validación y en prueba. No nombra a ningún modelo. Si agregaron candidatos, aparecen solos en la tabla y en las gráficas.
+'''),
+("code", r'''
+from sklearn.base import clone
 
 def puntaje(modelo, entradas):
     """Puntaje continuo de cada foto: mientras más alto, más sospecha de melanoma."""
@@ -381,34 +416,35 @@ def puntaje(modelo, entradas):
 
 inicio = time.time()
 entrenados, curvas = {}, {}
-for nombre, modelo in cinco_modelos().items():
-    entrenados[nombre] = modelo.fit(X[E], y[E])
+for nombre, receta in MODELOS.items():
+    modelo = clone(receta).fit(X[E], y[E])              # clone saca una copia sin entrenar y deja intacto el catálogo
+    entrenados[nombre] = modelo
     resultados[nombre] = {"validación": roc_auc_score(y[V], puntaje(modelo, X[V])),
                           "prueba": roc_auc_score(y[P], puntaje(modelo, X[P]))}
     curvas[nombre] = roc_curve(y[V], puntaje(modelo, X[V]))
 comparacion = pd.DataFrame(resultados).T
 print(f"Tiempo: {time.time() - inicio:.0f} s")
 
-fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 4.5))
+fig, (izq, der) = plt.subplots(1, 2, figsize=(14, 5.5))
 comparacion.sort_values("validación").plot.barh(ax=izq, color=["#1D4E89", "#1B998B"])
 izq.axvline(0.5, color="gray", ls=":"); izq.set(title="AUC: validación para escoger, prueba para reportar", xlabel="AUC", xlim=(0.45, 1))
-for nombre, (fp, vp, _) in curvas.items():
-    der.plot(fp, vp, label=f"{nombre} ({comparacion.loc[nombre, 'validación']:.3f})")
+for i, (nombre, (fp, vp, _)) in enumerate(curvas.items()):
+    der.plot(fp, vp, ls="-" if i < len(PALETA) else "--", label=f"{nombre} ({comparacion.loc[nombre, 'validación']:.3f})")
 fp, vp, _ = roc_curve(y[V], base.predict_proba(planilla.iloc[V])[:, 1])
 der.plot(fp, vp, color="black", ls="--", label=f"planilla ({comparacion.loc['planilla (edad, sexo, sitio)', 'validación']:.3f})")
 der.plot([0, 1], [0, 1], color="gray", ls=":")
-der.set(title="Curvas ROC en validación", xlabel="1 − especificidad", ylabel="sensibilidad"); der.legend(fontsize=8)
+der.set(title="Curvas ROC en validación", xlabel="1 − especificidad", ylabel="sensibilidad"); der.legend(fontsize=7)
 plt.tight_layout(); plt.show()
 display(comparacion.sort_values("validación", ascending=False).round(3))
 '''),
 ("md", r'''
-Lean la tabla con dos preguntas. La primera es cuánto le ganan las fotos a la planilla, y la respuesta honesta es que le ganan por poco: una red que nunca vio un lunar, sin reentrenar, queda apenas por encima de preguntar la edad. La segunda es cuánto se diferencian los cinco modelos entre sí. Cuando las características son las mismas, cambiar de clasificador mueve el resultado menos que cambiar de características.
+Lean la tabla con dos preguntas. La primera es cuánto le ganan las fotos a la planilla, y la respuesta honesta es que le ganan por poco: una red que nunca vio un lunar, sin reentrenar, queda apenas por encima de preguntar la edad. La segunda es cuánto se diferencian entre sí los modelos del catálogo. Cuenten cuántos quedan por debajo de la planilla, que no ve la foto. Miren también qué tan cerca quedan los primeros entre sí, y comparen esa distancia con la que hay entre la validación y la prueba de un mismo modelo.
 
 ### 3.4 La trampa de hoy: partir al azar por imagen
 
 Ahora hago lo que hace `train_test_split` si uno no le dice nada: sortear **imágenes**. El tamaño de la prueba es el mismo y los modelos son los mismos. Lo único que cambia es que las hermanas de una lesión pueden quedar a lados distintos.
 
-**Predicción escrita:** ¿cuál de los cinco modelos se infla más, y por qué? **Mi apuesta:**
+**Predicción escrita:** ¿cuál de los modelos del catálogo se infla más, y por qué? **Mi apuesta:**
 '''),
 ("code", r'''
 def al_azar(semilla, cuantas):
@@ -425,19 +461,19 @@ filtradas = np.isin(lesion[prueba_a], lesion[entren_a])
 print(f"Al partir al azar, {filtradas.mean() * 100:.0f} % de las fotos de prueba tienen una hermana en el entrenamiento.")
 
 trampa = {}
-for nombre, modelo in cinco_modelos().items():
-    limpio = roc_auc_score(y[prueba_l], puntaje(modelo.fit(X[entren_l], y[entren_l]), X[prueba_l]))
-    con_fuga = roc_auc_score(y[prueba_a], puntaje(modelo.fit(X[entren_a], y[entren_a]), X[prueba_a]))
+for nombre, receta in MODELOS.items():
+    limpio = roc_auc_score(y[prueba_l], puntaje(clone(receta).fit(X[entren_l], y[entren_l]), X[prueba_l]))
+    con_fuga = roc_auc_score(y[prueba_a], puntaje(clone(receta).fit(X[entren_a], y[entren_a]), X[prueba_a]))
     trampa[nombre] = {"por lesión": limpio, "al azar por imagen": con_fuga, "inflado": con_fuga - limpio}
 trampa = pd.DataFrame(trampa).T
 print(f"Tiempo: {time.time() - inicio:.0f} s")
 
-trampa[["por lesión", "al azar por imagen"]].plot.bar(color=["#1D4E89", "#D7263D"], rot=0, figsize=(9, 4))
+trampa[["por lesión", "al azar por imagen"]].plot.bar(color=["#1D4E89", "#D7263D"], rot=30, figsize=(12, 4))
 plt.ylim(0.5, 1); plt.ylabel("AUC"); plt.title("El mismo modelo, dos exámenes"); plt.show()
 display(trampa.round(3))
 '''),
 ("md", r'''
-Todos suben, y ninguno aprendió nada nuevo sobre melanomas. Un solo sorteo puede tener suerte, así que repito el experimento 30 veces con los dos modelos más rápidos. Agrego el caso extremo, el vecino más cercano con $k=1$, que clasifica cada foto con la etiqueta de la foto de entrenamiento que más se le parece. Para ese modelo mido la exactitud, que es la fracción de fotos bien clasificadas, y la separo según la foto tenga o no una hermana en el entrenamiento.
+Miren la columna `inflado`. Los modelos que suben no aprendieron nada nuevo sobre melanomas. Un solo sorteo puede tener suerte, así que repito el experimento 30 veces con los dos modelos más rápidos. Agrego el caso extremo, el vecino más cercano con $k=1$, que clasifica cada foto con la etiqueta de la foto de entrenamiento que más se le parece. Para ese modelo mido la exactitud, que es la fracción de fotos bien clasificadas, y la separo según la foto tenga o no una hermana en el entrenamiento.
 '''),
 ("code", r'''
 inicio = time.time()
@@ -446,7 +482,7 @@ for semilla in range(30):
     entren_l, prueba_l = por_lesion(semilla)
     entren_a, prueba_a = al_azar(semilla, len(prueba_l))
     fila = {}
-    logistica = cinco_modelos()["logística"]
+    logistica = clone(MODELOS["logística"])
     fila["logística, por lesión"] = roc_auc_score(y[prueba_l], puntaje(logistica.fit(X[entren_l], y[entren_l]), X[prueba_l]))
     fila["logística, al azar"] = roc_auc_score(y[prueba_a], puntaje(logistica.fit(X[entren_a], y[entren_a]), X[prueba_a]))
     un_vecino = make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=1))
@@ -487,13 +523,34 @@ El número inflado es el que uno querría publicar, y por eso esta fuga aparece 
 La regla quedó fijada antes de mirar: gana el mayor AUC en **validación** y se reporta su AUC en **prueba**.
 '''),
 ("code", r'''
-solo_imagen = comparacion.loc[list(cinco_modelos())]
+solo_imagen = comparacion.loc[list(MODELOS)]
 mejor = solo_imagen["validación"].idxmax()
 ganador = entrenados[mejor]
 print(f"Ganador en validación: {mejor}")
 print(f"AUC en prueba: {comparacion.loc[mejor, 'prueba']:.3f} | planilla: {comparacion.loc['planilla (edad, sexo, sitio)', 'prueba']:.3f} | solo edad: {comparacion.loc['solo edad', 'prueba']:.3f}")
 '''),
 ("md", r'''
+El ganador salió de una lista larga, y eso tiene un costo que conviene mirar. La gráfica siguiente pone cada modelo del catálogo según su puesto en validación y su puesto en prueba. Si el orden de validación fuera una propiedad firme de los modelos, los puntos caerían sobre la diagonal.
+'''),
+("code", r'''
+puestos = solo_imagen.rank(ascending=False, method="first").astype(int)          # el puesto 1 es el mejor AUC
+
+fig, eje = plt.subplots(figsize=(5, 5), facecolor="#FBFAF7")
+eje.set_facecolor("#FBFAF7")
+eje.plot([1, len(puestos)], [1, len(puestos)], color="#9AA5B1", ls=":")
+eje.scatter(puestos["validación"], puestos["prueba"], s=45, zorder=3, color=["#D7263D" if nombre == mejor else "#1D4E89" for nombre in puestos.index])
+for nombre, fila in puestos.iterrows():
+    eje.annotate(nombre, (fila["validación"], fila["prueba"]), xytext=(6, 4), textcoords="offset points", fontsize=7)
+eje.set(title="¿El orden de validación se repite en la prueba?", xlabel="puesto en validación (1 es el mejor)", ylabel="puesto en prueba",
+        xticks=range(1, len(puestos) + 1), yticks=range(1, len(puestos) + 1))
+plt.show()
+print(f"AUC en validación del primero y del segundo: {solo_imagen['validación'].nlargest(2).round(3).tolist()}")
+'''),
+("md", r'''
+El punto rojo es el ganador. Miren cuánto se alejan los puntos de la diagonal y cuánta ventaja le sacó el primero al segundo en validación. Cuando varios candidatos quedan a pocas milésimas, el orden entre ellos depende de cuáles lesiones cayeron en la validación. Ese efecto crece con el catálogo, porque entre más candidatos compiten, más fácil es que alguno salga favorecido por el sorteo.
+
+**Pregunta.** Con tantos candidatos, ¿cuánto del ganador es azar? Respondan con los puestos de la gráfica y con la ventaja del primero sobre el segundo. **Mi respuesta:**
+
 ### 3.6 La foto y la planilla juntas
 
 La foto y la planilla quedaron cerca, y eso deja una pregunta abierta: ¿saben lo mismo o saben cosas distintas? Si saben cosas distintas, juntarlas debe mejorar. Entreno una regresión logística con las 512 características y con la edad, el sexo y el sitio.
@@ -723,12 +780,5 @@ Vuelvan a la celda del comienzo donde dice `SENSIBILIDAD = 0.90`, pongan `SENSIB
 | Imágenes de melanoma sin remitir | | |
 
 Con la tabla llena, respondan en tres líneas: ¿cuántas remisiones adicionales cuesta cada melanoma adicional que se atrapa? ¿Se lo recomendarían al programa? **Mi respuesta:**
-
-### 4.5 Procedencia
-
-Lo último que hace un cuaderno serio es decir de dónde salió su dato.
-'''),
-("code", r'''
-procedencia()["ham10000"]
 '''),
 ]
