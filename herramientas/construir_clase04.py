@@ -544,9 +544,16 @@ Este cuaderno lo resuelve cada uno, de forma individual, en la segunda mitad de 
 | **Enfoque** | Machine Learning. |
 | **Resultados de aprendizaje** | 1 (formular el problema, los objetivos y la métrica), 2 (seleccionar y preparar datos), 4 (implementar y evaluar un modelo), 5 (comunicar a quien no es técnico) y 6 (reflexión ética, técnica y operativa). |
 | **Uso de IA** | Pueden pedirle a Claude que explique una celda, que les ayude a llenar un hueco o que interprete un error. Deben poder explicar sin ayuda por qué se quitan los siniestros de solo daños, por qué la exactitud no sirve aquí, qué le hace el balanceo a la probabilidad, cómo se lee la curva de calibración y con qué criterio escogieron los cruces. |
-| **Entregable** | El cuaderno completo y corrido en su portafolio de GitHub, con las predicciones escritas, la decisión en tres frases, la bitácora y la tabla de la sección 4.5 llenas. |
+| **Entregable** | El cuaderno completo y corrido en su portafolio de GitHub, con las predicciones escritas, la decisión en tres frases, la bitácora y la tabla de la sección 4.4 llenas. |
 
 **Cómo se trabaja.** El código está escrito casi todo. Donde vean `____` falta una pieza, y el comentario de al lado dice qué va. Lean la celda entera antes de llenar. Si una celda falla, lean el error antes de pedir ayuda.
+'''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** Los siniestros de hoy salen de la base del Anuario de Siniestralidad Vial de 2024. La Secretaría Distrital de Movilidad la publica en [la página de anuarios de su Observatorio](https://observatorio.movilidadbogota.gov.co/publicaciones/anuarios), junto al informe de cada año. La base es un archivo de Excel que trae su propio diccionario en una hoja aparte. Abran la página y explórenla cinco minutos antes de correr nada. Respondan mirando la fuente:
+>
+> - ¿Qué entidad publica los anuarios y desde qué año hay uno disponible?
+> - ¿Qué dos archivos acompañan a cada año, y cuál de los dos es el dato?
+> - ¿Cada cuánto sale un anuario nuevo, y cuál es el más reciente?
 '''),
 ("code", ARRANQUE),
 ("md", r'''
@@ -581,7 +588,7 @@ Escriban su apuesta antes de correr nada.
 ("md", r'''
 ## 2. Datos
 
-La fuente es un archivo de Excel de 127 MB con diez años de siniestros. **La descarga tarda cerca de un minuto y medio.** Córranla y lean la sección mientras termina.
+Una línea trae la tabla completa, con diez años de siniestros. **La primera vez tarda cerca de un minuto y medio.** Córranla y lean la sección mientras termina.
 '''),
 ("code", r'''
 ACTOR = "todos"              # la población del análisis. Al final lo cambiarán por "Con_Peaton"
@@ -761,9 +768,6 @@ $$\underbrace{2015\ \dots\ 2020}_{\text{entrenamiento}}\ \Big|\ \underbrace{2021
 '''),
 ("code", r'''
 from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import roc_auc_score, brier_score_loss, log_loss
 
@@ -803,32 +807,72 @@ errores = {nombre: {"validación": puntuar(y[V], referencias_validacion[nombre])
 display(pd.DataFrame(errores).T.round(4))
 '''),
 ("md", r'''
-### 3.3 Cinco modelos y el mismo protocolo de la clase
+### 3.3 El catálogo de modelos y el mismo protocolo de la clase
 
-Los cinco candidatos son los de la clase. Gana quien tenga menor pérdida logarítmica en **validación** y se reporta lo que haga en **prueba**. Como el evento es muy raro, los vecindarios y las hojas son grandes, por la razón que vimos con los remates lejanos. Esta celda tarda cerca de un minuto.
+La celda siguiente es el catálogo de candidatos. Es un diccionario, `MODELOS`, con una línea por modelo, y no tiene huecos.
+
+- El texto entre comillas es el **nombre** con el que el modelo aparece en las tablas y en las gráficas.
+- `make_pipeline(...)` encadena la **preparación** (por ejemplo `StandardScaler()`, que estandariza cada variable) con el **clasificador**, que va al final. Así la preparación se ajusta solo con los siniestros de entrenamiento.
+- Para **agregar un modelo** escriban una línea nueva con otro nombre, importen su clase de scikit-learn al comienzo de la celda y corran el cuaderno desde ahí. Las celdas que siguen recorren lo que haya en el diccionario y no hay que tocarlas.
+
+Aquí la métrica es una probabilidad, así que solo sirven clasificadores que tengan `predict_proba`. Como el evento es muy raro, los vecindarios y las hojas son grandes, por la razón que vimos con los remates lejanos.
+
+**Ejercicio.** Agreguen al menos tres modelos más de scikit-learn y vuelvan a correr. No le cambien el nombre a `"logística"`, porque más abajo el cuaderno la usa por ese nombre.
+'''),
+("code", r'''
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, HistGradientBoostingClassifier, RandomForestClassifier
+from sklearn.naive_bayes import BernoulliNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.tree import DecisionTreeClassifier
+
+MODELOS = {
+    "logística": make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000)),
+    "logística, castigo fuerte": make_pipeline(StandardScaler(), LogisticRegression(C=0.001, max_iter=2000)),
+    "100 vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=100)),
+    "300 vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=300)),
+    "árbol": DecisionTreeClassifier(max_depth=6, min_samples_leaf=200, random_state=0),
+    "bosque": RandomForestClassifier(n_estimators=200, min_samples_leaf=50, random_state=0, n_jobs=-1),
+    "ExtraTrees": ExtraTreesClassifier(n_estimators=200, min_samples_leaf=50, random_state=0, n_jobs=-1),
+    "boosting": HistGradientBoostingClassifier(max_depth=4, learning_rate=0.05, max_iter=200, random_state=0),
+    "boosting clásico": GradientBoostingClassifier(n_estimators=100, max_depth=3, learning_rate=0.05, random_state=0),
+    "Bayes ingenuo": BernoulliNB(),
+    "discriminante lineal": make_pipeline(StandardScaler(), LinearDiscriminantAnalysis()),
+    "red pequeña": make_pipeline(StandardScaler(), MLPClassifier(hidden_layer_sizes=(16,), early_stopping=True, max_iter=100, random_state=0)),
+}
+print(len(MODELOS), "modelos en el catálogo:", ", ".join(MODELOS))
+'''),
+("md", r'''
+Gana quien tenga menor pérdida logarítmica en **validación** y se reporta lo que haga en **prueba**. Esta celda tarda cerca de un minuto.
 
 **Predicción escrita:** ¿cuánto bajará la pérdida logarítmica frente a la tasa base: mucho, poco o casi nada? **Mi apuesta:**
 '''),
 ("code", r'''
-def cinco_modelos(peso=None):
-    return {
-        "logística": make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000, class_weight=peso)),
-        "k vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=300)),
-        "árbol": DecisionTreeClassifier(max_depth=6, min_samples_leaf=200, class_weight=peso, random_state=0),
-        "bosque": RandomForestClassifier(n_estimators=200, min_samples_leaf=50, class_weight=peso, random_state=0, n_jobs=-1),
-        "boosting": HistGradientBoostingClassifier(max_depth=4, learning_rate=0.05, max_iter=200, class_weight=peso, random_state=0),
-    }
+from sklearn.base import clone
 
-for nombre, modelo in cinco_modelos().items():
-    modelo.fit(X[E], y[E])
+def copia(nombre, peso=None):
+    """Una copia sin entrenar del modelo `nombre`. Con peso="balanced", su clasificador pesa las dos clases por igual."""
+    modelo = clone(MODELOS[nombre])
+    if peso is not None:
+        (modelo[-1] if hasattr(modelo, "steps") else modelo).set_params(class_weight=peso)
+    return modelo
+
+def admite_peso(nombre):
+    """¿El clasificador de `nombre` sabe pesar las clases? Los vecinos y la red, por ejemplo, no."""
+    clasificador = MODELOS[nombre][-1] if hasattr(MODELOS[nombre], "steps") else MODELOS[nombre]
+    return "class_weight" in clasificador.get_params()
+
+for nombre in MODELOS:
+    modelo = copia(nombre).fit(X[E], y[E])
     en_validacion = puntuar(y[V], modelo.predict_proba(X[V])[:, 1])["pérdida logarítmica"]
-    modelo.fit(X[E | V], y[E | V])
+    modelo = copia(nombre).fit(X[E | V], y[E | V])
     probabilidades[nombre] = modelo.predict_proba(X[P])[:, 1]
     errores[nombre] = {"validación": en_validacion, **puntuar(y[P], probabilidades[nombre])}
 todos = pd.DataFrame(errores).T
 
-todos[["validación", "pérdida logarítmica"]].rename(columns={"pérdida logarítmica": "prueba"}).sort_values("validación").plot.barh(figsize=(9, 4), color=["#1D4E89", "#1B998B"])
-plt.xlabel("pérdida logarítmica (menos es mejor)"); plt.title("Siete candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
+todos[["validación", "pérdida logarítmica"]].rename(columns={"pérdida logarítmica": "prueba"}).sort_values("validación").plot.barh(figsize=(9, 5.5), color=["#1D4E89", "#1B998B"])
+plt.xlabel("pérdida logarítmica (menos es mejor)"); plt.title(f"{len(todos)} candidatos: validación para escoger, prueba para reportar"); plt.gca().invert_yaxis(); plt.show()
 display(todos.sort_values("validación").round(4))
 
 mejor = todos[«"validación"»].idxmin()                                                    # HUECO 9: la columna con la que se escoge al ganador
@@ -837,6 +881,26 @@ print(f"Ganador en validación: {mejor} | en prueba: pérdida logarítmica {todo
 print(f"Tasa de su clase: {todos.loc['tasa de su clase', 'pérdida logarítmica']:.4f} | tasa base: {todos.loc['tasa base', 'pérdida logarítmica']:.4f} | método con el que seguimos: {elegido}")
 '''),
 ("md", r'''
+El ganador salió de una lista larga. La gráfica siguiente pone cada modelo del catálogo según su puesto en validación y su puesto en prueba. Si el orden de validación fuera una propiedad firme de los modelos, los puntos caerían sobre la diagonal.
+'''),
+("code", r'''
+del_catalogo = todos.loc[list(MODELOS), ["validación", "pérdida logarítmica"]].rename(columns={"pérdida logarítmica": "prueba"})
+puestos = del_catalogo.rank(method="first").astype(int)                          # el puesto 1 es la menor pérdida logarítmica
+primero = del_catalogo["validación"].idxmin()
+
+fig, eje = plt.subplots(figsize=(5, 5), facecolor="#FBFAF7")
+eje.set_facecolor("#FBFAF7")
+eje.plot([1, len(puestos)], [1, len(puestos)], color="#9AA5B1", ls=":")
+eje.scatter(puestos["validación"], puestos["prueba"], s=45, zorder=3, color=["#D7263D" if nombre == primero else "#1D4E89" for nombre in puestos.index])
+for nombre, fila in puestos.iterrows():
+    eje.annotate(nombre, (fila["validación"], fila["prueba"]), xytext=(6, 4), textcoords="offset points", fontsize=7)
+eje.set(title="¿El orden de validación se repite en la prueba?", xlabel="puesto en validación (1 es el mejor)", ylabel="puesto en prueba",
+        xticks=range(1, len(puestos) + 1), yticks=range(1, len(puestos) + 1))
+plt.show()
+print(f"Pérdida logarítmica en validación del primero y del segundo: {del_catalogo['validación'].nsmallest(2).round(4).tolist()}")
+'''),
+("md", r'''
+- El punto rojo es el mejor modelo del catálogo en validación. Miren cuánto se alejan los puntos de la diagonal y cuánta ventaja le sacó el primero al segundo. Con tantos candidatos, ¿cuánto del ganador es azar? **Mi respuesta:**
 - El AUC del ganador puede ser alto y la mejora en pérdida logarítmica pequeña. ¿Cómo pueden ser ciertas las dos cosas con un evento tan raro? **Mi respuesta:**
 - ¿El ganador predice bien el **total** de siniestros mortales de la prueba? **Mi lectura:**
 
@@ -851,9 +915,10 @@ def logit(p):
     p = np.clip(p, 1e-6, 1 - 1e-6)
     return np.log(p / (1 - p))
 
-nombre_modelo = elegido if elegido in cinco_modelos() else "logística"       # si ganó la línea base, se sigue con el modelo más simple de los cinco
-normal = cinco_modelos()[nombre_modelo].fit(X[E], y[E])
-balanceado = cinco_modelos(peso=«"balanced"»)[nombre_modelo].fit(X[E], y[E])               # HUECO 10: el valor de class_weight que iguala el peso de las dos clases, entre comillas
+nombre_modelo = elegido if elegido in MODELOS else "logística"                # si ganó la línea base, se sigue con el modelo más simple del catálogo
+para_balancear = nombre_modelo if admite_peso(nombre_modelo) else "logística"  # si el elegido no sabe pesar las clases, la trampa se muestra con la logística
+normal = copia(para_balancear).fit(X[E], y[E])
+balanceado = copia(para_balancear, peso=«"balanced"»).fit(X[E], y[E])                      # HUECO 10: el valor de class_weight que iguala el peso de las dos clases, entre comillas
 p_normal, p_balanceado = normal.predict_proba(X[P])[:, 1], balanceado.predict_proba(X[P])[:, 1]
 
 platt = LogisticRegression().fit(logit(balanceado.predict_proba(X[V])[:, 1]).reshape(-1, 1), y[V])     # recalibración ajustada en validación
@@ -861,7 +926,7 @@ p_recalibrado = platt.predict_proba(logit(p_balanceado).reshape(-1, 1))[:, 1]
 
 trampa = pd.DataFrame({"sin balancear": puntuar(y[P], p_normal), "balanceado": puntuar(y[P], p_balanceado),
                        "balanceado y recalibrado": puntuar(y[P], p_recalibrado)}).T
-print("Modelo:", nombre_modelo, "| factor que anticipa la cuenta de la clase:", round((1 - y[E].mean()) / y[E].mean(), 1))
+print("Modelo:", para_balancear, "| factor que anticipa la cuenta de la clase:", round((1 - y[E].mean()) / y[E].mean(), 1))
 display(trampa.round(4))
 '''),
 ("md", r'''
@@ -889,7 +954,7 @@ for eje, limite in [(izq, 1.0), (der, 0.25)]:
 izq.set_title("Curva de calibración en la prueba"); der.set_title("La misma, ampliada"); izq.legend(fontsize=8); plt.tight_layout(); plt.show()
 
 con_hipotesis = pd.concat([X, hipotesis], axis=1)
-modelo_h = cinco_modelos()[nombre_modelo].fit(con_hipotesis[E | V], y[E | V])
+modelo_h = copia(nombre_modelo).fit(con_hipotesis[E | V], y[E | V])
 comparacion = pd.DataFrame({"sin hipótesis": puntuar(y[P], probabilidades[nombre_modelo]), "con hipótesis": puntuar(y[P], modelo_h.predict_proba(con_hipotesis[P])[:, 1])}).T
 display(comparacion.round(4))
 '''),
@@ -902,7 +967,7 @@ display(comparacion.round(4))
 Con las variables estandarizadas, $\text{OR}_j=e^{\beta_j}$ es la razón de probabilidades por cada desviación estándar de la variable $j$, con las demás quietas.
 '''),
 ("code", r'''
-explicativo = cinco_modelos()["logística"].fit(X[E | V], y[E | V])
+explicativo = copia("logística").fit(X[E | V], y[E | V])
 razones = pd.Series(np.«exp»(explicativo[-1].coef_[0]), index=variables).sort_values()        # HUECO 12: la función que convierte un coeficiente en una razón de probabilidades
 razones.plot.barh(figsize=(8, 5.5), color=["#5BC0EB" if r < 1 else "#D7263D" for r in razones]); plt.axvline(1, color="gray")
 plt.xlabel("razón de probabilidades por desviación estándar"); plt.title("Qué acompaña a un siniestro mortal"); plt.show()
@@ -927,7 +992,7 @@ Llamo **cruce** a una celda de unos 110 metros de lado, que sale de redondear la
 Después miro cuántos siniestros mortales de 2023 y 2024 ocurrieron en los cruces escogidos por cada criterio. Ningún criterio conoce esos dos años. La tercera manera es la que necesita probabilidades calibradas: una suma de probabilidades infladas no es un número de muertes.
 '''),
 ("code", r'''
-modelo_final = cinco_modelos()[nombre_modelo].fit(X[E | V], y[E | V])
+modelo_final = copia(nombre_modelo).fit(X[E | V], y[E | V])
 victimas["p"] = modelo_final.predict_proba(X)[:, 1]
 victimas["mortal"] = y
 victimas["cruce"] = victimas["Latitud"].round(«3»).astype(str) + ", " + victimas["Longitud"].round(3).astype(str)    # HUECO 13: cuántos decimales definen una celda de unos 110 metros
@@ -1006,13 +1071,7 @@ Llenen las filas vacías. La primera va de ejemplo.
 - Este modelo estima la probabilidad de muerte **dado** que hubo un siniestro con víctimas. ¿Por qué no sirve para decir en qué cruce es más probable que haya un siniestro?
 - Detrás de cada fila mortal hay una familia. ¿Qué cuidados tendrían al publicar un mapa con estos puntos?
 
-### 4.4 Procedencia
-'''),
-("code", r'''
-procedencia()["siniestros_bogota"]
-'''),
-("md", r'''
-### 4.5 Cambien una línea
+### 4.4 Cambien una línea
 
 Vuelvan a la celda donde dice `ACTOR = "todos"`, pongan `ACTOR = "Con_Peaton"` y corran todo de nuevo con *Entorno de ejecución*, *Ejecutar todo*. Ahora la población son los siniestros en que hubo un peatón. Llenen la tabla con sus dos corridas.
 
