@@ -20,6 +20,13 @@ Este cuaderno lo resuelvo yo en vivo. Hoy el resultado es un servicio que otra p
 
 **Qué corre sin llaves y qué no.** Las secciones 1 a 3.5 y las pruebas de la API corren sin ninguna cuenta. Las dos celdas que llaman a Claude y a ElevenLabs necesitan llaves: si no las encuentran, lo dicen y siguen. Ninguna celda inventa la respuesta de un servicio.
 '''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** Las noticias de hoy vienen del corpus MLSUM, en la copia `mteb/mlsum` de Hugging Face. Abran la [página del conjunto](https://huggingface.co/datasets/mteb/mlsum) y explórenla cinco minutos. En el visor de datos escojan la configuración `es` y lean dos o tres filas completas. Respondan mirando la fuente:
+>
+> - ¿Qué es una fila y qué columna trae el resumen de referencia?
+> - ¿Cuántas noticias en español hay en cada partición del corpus?
+> - ¿Qué dice la ficha sobre la licencia, y de quién son los textos?
+'''),
 ("code", ARRANQUE),
 ("code", r'''
 # El parámetro del cuaderno. Al final de la clase se cambia esta línea y se corre todo de nuevo.
@@ -72,7 +79,7 @@ y con $v=150$ un minuto son 150 palabras. Ese 150 es un supuesto de locución qu
 ("md", r'''
 ## 2. Datos
 
-Una línea trae las 13.920 noticias de la partición de prueba de MLSUM en español. Pesa 44 MB y tarda menos de medio minuto. Los textos son de El País: los usamos en clase con cita y enlace, y no los republicamos.
+Una línea trae las noticias de la partición de prueba de MLSUM en español. El corpus completo en español tiene cerca de 290.000 noticias, y aquí usamos solo esa partición porque es la misma que consulta la API del servicio, noticia por noticia. Los textos son de El País: los usamos en clase con cita y enlace, y no los republicamos.
 '''),
 ("code", r'''
 noticias = descargar("mlsum_es")
@@ -547,10 +554,5 @@ Vuelvan a la celda de parámetros, cambien `TEMA = "economia actualidad"` por `T
 | Entradillas dañadas que marca el control de cifras (%) | | |
 
 Con la tabla llena, respondan en tres líneas: ¿el mismo resumidor sirve para las dos secciones? ¿En cuál confiarían menos en un resumen automático, y por qué? **Mi respuesta:**
-
-### 4.6 Procedencia
-'''),
-("code", r'''
-{nombre: ficha for nombre, ficha in procedencia().items() if nombre == "mlsum_es"}
 '''),
 ]
