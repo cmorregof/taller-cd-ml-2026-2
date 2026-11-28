@@ -1,0 +1,97 @@
+\documentclass[10pt,letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1.5cm,top=1.3cm,bottom=1.4cm]{geometry}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{tabularx,array}
+\usepackage[table]{xcolor}
+\usepackage[most]{tcolorbox}
+\definecolor{rojo}{HTML}{D7263D}
+\definecolor{azul}{HTML}{1D4E89}
+\definecolor{gris}{HTML}{9AA5B1}
+\definecolor{fondo}{HTML}{FBFAF7}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\raggedright\hyphenpenalty=10000
+\renewcommand{\arraystretch}{1.25}
+\arrayrulecolor{gris}
+\newcommand{\renglon}{\vspace{6mm}\hrule height 0.3pt\relax}
+\newtcolorbox{caja}[1]{enhanced,breakable,colback=white,colframe=azul,boxrule=0.6pt,arc=1.5mm,
+  left=2mm,right=2mm,top=1.5mm,bottom=2mm,fonttitle=\bfseries\small,title={#1},
+  colbacktitle=azul,coltitle=white,before skip=3mm,after skip=0mm}
+\newtcolorbox{cajaroja}[1]{enhanced,breakable,colback=white,colframe=rojo,boxrule=0.6pt,arc=1.5mm,
+  left=2mm,right=2mm,top=1.5mm,bottom=2mm,fonttitle=\bfseries\small,title={#1},
+  colbacktitle=rojo,coltitle=white,before skip=3mm,after skip=0mm}
+\begin{document}
+
+{\color{rojo}\rule{\linewidth}{2pt}}\\[1.5mm]
+{\LARGE\bfseries La Premier del Leicester}\hfill{\small\color{azul}\bfseries HOJA DE BITÁCORA}\\[0.5mm]
+{\small Clase 4 \textperiodcentered{} sábado 28 de noviembre de 2026 \textperiodcentered{} Taller en Ciencia de Datos y Aprendizaje Automático \textperiodcentered{} UNAL Manizales}\\[3mm]
+\textbf{Nombre:} \rule{0.62\linewidth}{0.3pt}\hfill \textbf{Fecha:} \rule{0.2\linewidth}{0.3pt}\\[1mm]
+{\footnotesize\color{azul}Al terminar, tómenle una foto a las dos caras y adjúntenla a la tarea de Classroom.}\\[-2mm]
+\begin{cajaroja}{Apuestas. Se escriben con esfero, antes de correr la celda, y no se corrigen}
+\begin{tabularx}{\linewidth}{|c|X|p{3.1cm}|p{3.1cm}|}\hline
+ & \textbf{\small Pregunta} & \textbf{\small Mi apuesta} & \textbf{\small Lo que salió}\\\hline
+\textbf{A1} & \rule{0pt}{8mm}En el Mundial, cerca de 11 de cada cien remates fueron gol. ¿Y en la Premier? & & \\\hline
+\textbf{A2} & \rule{0pt}{8mm}Si el modelo recibe la columna resultado, ¿qué le pasa a su pérdida logarítmica? & & \\\hline
+\textbf{A3} & \rule{0pt}{8mm}En la mañana ganó la validación el bosque, y el Spearman entre puestos fue 0,74. ¿Qué modelo gana ahora? ¿El Spearman sube o baja? & & \\\hline
+\textbf{A4} & \rule{0pt}{8mm}Entre las dos mitades de la temporada, ¿qué se repite más en un jugador: la calidad de sus ocasiones o su puntería? & & \\\hline
+\end{tabularx}
+\end{cajaroja}
+\begin{caja}{Secciones 2.1 y 3.2. Las trampas, comprobadas con la Premier}
+\begin{tabularx}{\linewidth}{|l|X|X|}\hline
+\textbf{\small Trampa} & \textbf{\small Lo que encontré en el dato} & \textbf{\small Decisión}\\\hline
+\rule{0pt}{7mm}Periodo 5 &  & \\\hline
+\rule{0pt}{7mm}Remates sin foto &  & \\\hline
+\rule{0pt}{7mm}resultado &  & \\\hline
+\end{tabularx}
+\end{caja}
+\begin{caja}{Sección 3.3. Los tres modelos que agregué al catálogo (pérdida logarítmica)}
+\begin{tabularx}{\linewidth}{|l|X|X|}\hline
+\textbf{\small Modelo y opciones} & \textbf{\small Validación} & \textbf{\small Prueba}\\\hline
+\rule{0pt}{7mm}1. &  & \\\hline
+\rule{0pt}{7mm}2. &  & \\\hline
+\rule{0pt}{7mm}3. &  & \\\hline
+\end{tabularx}
+\end{caja}
+\begin{caja}{Sección 4.1. Primera mitad contra segunda mitad}
+\begin{tabularx}{\linewidth}{|l|X|X|}\hline
+\textbf{\small Medida} & \textbf{\small Correlación} & \textbf{\small Intervalo de 95 \%}\\\hline
+\rule{0pt}{7mm}Remates &  & \\\hline
+\rule{0pt}{7mm}Gol esperado por remate &  & \\\hline
+\rule{0pt}{7mm}Goles menos gol esperado, por remate &  & \\\hline
+\end{tabularx}
+\end{caja}
+\begin{caja}{Mis respuestas, con mis palabras}
+{\small\bfseries Sección 3.4. ¿El ganador de validación fue el mejor en la prueba? ¿Qué cambió frente a la mañana y por qué?}\renglon\renglon\vspace{2mm}
+
+{\small\bfseries Sección 4.1. ¿Qué se repite más, las ocasiones o la puntería? ¿Qué no permite concluir ese resultado?}\renglon\renglon\vspace{2mm}
+
+{\small\bfseries Sección 4.3. Premortem: pasó un año y mi primer nombre no rindió. ¿Por qué? ¿La tabla de remates lo podía ver?}\renglon\renglon\vspace{2mm}
+
+{\small\bfseries Sección 4.4. Si este número fija un salario o un despido, ¿qué le exijo al número y qué le debo al jugador?}\renglon\renglon\vspace{2mm}
+
+\end{caja}
+\begin{cajaroja}{Sección 4.3. La decisión en tres frases, para un director deportivo que no sabe qué es una pérdida logarítmica}
+{\small\bfseries 1. Recomendación:}\renglon\renglon\vspace{2mm}
+
+{\small\bfseries 2. Evidencia:}\renglon\renglon\vspace{2mm}
+
+{\small\bfseries 3. Riesgo:}\renglon\renglon\vspace{2mm}
+
+\end{cajaroja}
+\begin{caja}{Sección 4.6. Cambien una línea: Premier League 2015/2016 (2, 27) y Copa América 2024 (223, 282)}
+\begin{tabularx}{\linewidth}{|p{7.2cm}|X|X|}\hline
+\textbf{\small } & \textbf{\small Premier} & \textbf{\small Copa América}\\\hline
+\rule{0pt}{7mm}Partidos, remates en juego y goles &  & \\\hline
+\rule{0pt}{7mm}Ganador de validación y puesto en prueba &  & \\\hline
+\rule{0pt}{7mm}Spearman de los puestos &  & \\\hline
+\rule{0pt}{7mm}Pérdida log. en prueba: ganador &  & \\\hline
+\rule{0pt}{7mm}Pérdida log. en prueba: solo distancia &  & \\\hline
+\rule{0pt}{7mm}Pérdida log. en prueba: StatsBomb &  & \\\hline
+\rule{0pt}{7mm}Jugadores que pasan el umbral (4.1) &  & \\\hline
+\end{tabularx}
+\par\vspace{3mm}{\small\bfseries ¿Qué conclusiones de la liga sobreviven en un torneo de 32 partidos y cuáles no?}\renglon\renglon
+\end{caja}
+\end{document}
