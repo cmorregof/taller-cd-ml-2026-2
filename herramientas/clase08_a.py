@@ -12,13 +12,20 @@ Este cuaderno lo resuelvo yo en vivo durante la primera mitad de la clase. En la
 
 | Ficha | |
 |---|---|
-| **Objetivo pedagógico** | Convertir una señal en una tabla de características (estadísticas, espectrales y de forma), comparar cinco modelos de scikit-learn sobre esa tabla y partir los datos por paciente para que el examen sea limpio. |
+| **Objetivo pedagógico** | Convertir una señal en una tabla de características (estadísticas, espectrales y de forma), comparar un catálogo de modelos de scikit-learn sobre esa tabla y partir los datos por paciente para que el examen sea limpio. |
 | **Enfoque** | Machine Learning. |
 | **Resultados de aprendizaje** | 1 (formular el problema y la métrica), 2 (seleccionar y preparar datos), 4 (implementar y evaluar un modelo), 5 (comunicar a quien no es técnico) y 6 (reflexión ética, técnica y operativa). |
 | **Uso de IA** | Pueden pedirle a Claude que explique un filtro, una transformada o una línea de código. Deben poder explicar sin ayuda qué es una frecuencia de muestreo, qué resume cada familia de características, por qué se parte por paciente y cómo se escogió el umbral. |
 | **Entregable** | Este cuaderno corrido de principio a fin en su portafolio, con la decisión de la sección 4 escrita por ustedes y la tabla de la variante llena. |
 
 **Cómputo.** Todo corre en CPU. La descarga de los trazos tarda cerca de tres minutos y el resto del cuaderno, entre tres y seis minutos en Colab gratuito.
+'''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** Los electrocardiogramas de hoy son los de PTB-XL, que publica PhysioNet. Abran la [página del conjunto](https://physionet.org/content/ptb-xl/1.0.3/) y explórenla cinco minutos. El diccionario de los códigos diagnósticos es el archivo [`scp_statements.csv`](https://physionet.org/files/ptb-xl/1.0.3/scp_statements.csv), que está en la lista de archivos de esa misma página. Respondan mirando la fuente:
+>
+> - ¿Quién recogió los trazos, en qué años, y quién los publica hoy?
+> - ¿Una fila de `ptbxl_database.csv` es un paciente o es un registro?
+> - ¿Qué licencia tiene el conjunto y qué pide a cambio de usarlo?
 '''),
 ("code", ARRANQUE),
 ("code", r'''
@@ -153,7 +160,7 @@ Tres advertencias sobre este recorte. La primera es que dejar por fuera los dem�
 
 ### 2.3 Las señales
 
-Cada trazo es un archivo de 24 kB en PhysioNet. La función `trazos` baja los que necesitamos, con muchas consultas a la vez, y los entrega en milivoltios. La primera vez tarda cerca de tres minutos.
+La función `trazos` entrega la señal de cada registro de la tabla, en milivoltios. Son todos los trazos de los dos grupos, sin muestreo. La primera vez tarda cerca de tres minutos.
 '''),
 ("code", r'''
 inicio = time.time()
@@ -297,12 +304,12 @@ izq.plot(t, crudo, color="gray", lw=0.8, label="crudo")
 izq.plot(t, X[ejemplo["con infarto"], :, guia], color="#D7263D", lw=0.9, label="filtrado")
 izq.set(title=f"El filtro, derivación {DERIVACIONES_USADAS[guia]}", xlabel="segundos", ylabel="mV"); izq.legend()
 
-f, P = signal.welch(X[::20, :, guia], fs=FS_ECG, nperseg=256, axis=1)
+f, P = signal.welch(X[:, :, guia], fs=FS_ECG, nperseg=256, axis=1)
 for valor, nombre, color in [(0, "normal", "#1D4E89"), (1, "con infarto", "#D7263D")]:
-    der.semilogy(f, P[y[::20] == valor].mean(axis=0), color=color, label=nombre)
+    der.semilogy(f, P[y == valor].mean(axis=0), color=color, label=nombre)
 for corte in [5, 15, 40]:
     der.axvline(corte, color="gray", ls=":")
-der.set(title="Espectro promedio (uno de cada 20 registros)", xlabel="Hz", ylabel="potencia"); der.legend()
+der.set(title="Espectro promedio de cada grupo", xlabel="Hz", ylabel="potencia"); der.legend()
 plt.tight_layout(); plt.show()
 
 print("Frecuencia cardiaca (latidos por minuto):")
@@ -403,74 +410,125 @@ print(f"Línea base (edad y sexo): AUC {auc_base['validación']:.3f} en validaci
 ("md", r'''
 Comparen con su primera apuesta. Esa es la cifra que hay que vencer.
 
-### 3.2 Cinco modelos sobre la tabla de características
+### 3.2 Un catálogo de modelos sobre la tabla de características
 
-| Modelo | Idea en una línea |
+| Familia | Idea en una línea |
 |---|---|
-| Regresión logística | Una frontera lineal: $P(y=1\mid x)=1/(1+e^{-(\beta_0+x^\top\beta)})$ |
-| $k$ vecinos | Vota con los $k$ registros de entrenamiento más parecidos |
-| Bosque aleatorio | Promedia muchos árboles entrenados sobre remuestreos |
-| *Gradient boosting* | Suma árboles pequeños, cada uno corrigiendo el error del anterior |
+| Regresión logística, con dos niveles de regularización | Una frontera lineal: $P(y=1\mid x)=1/(1+e^{-(\beta_0+x^\top\beta)})$ |
+| Análisis discriminante lineal | Supone una normal por grupo con la misma covarianza |
+| Bayes ingenuo | Supone que las columnas son independientes dentro de cada grupo |
+| $k$ vecinos, con dos valores de $k$ | Vota con los $k$ registros de entrenamiento más parecidos |
+| Árbol de decisión | Parte la tabla con preguntas de sí o no sobre una columna a la vez |
+| Bosque aleatorio y *ExtraTrees* | Promedian muchos árboles, entrenados sobre remuestreos o con cortes al azar |
+| *Gradient boosting* por histogramas | Suma árboles pequeños, cada uno corrigiendo el error del anterior |
 | Máquina de soporte vectorial | Busca la frontera con más margen, curva gracias a un núcleo gaussiano |
+| Red neuronal pequeña | Una capa oculta de 32 unidades |
 
 La regla queda escrita antes de correr: gana el de mayor AUC en **validación**, y su AUC en **prueba** es el que se reporta. Cada modelo se entrena una sola vez, con las particiones 1 a 8.
+
+**Cómo leer la celda del catálogo.** El diccionario `MODELOS` tiene una línea por candidato, con su nombre y un `make_pipeline` que encadena la preparación de la tabla con el clasificador. `llenar()` reemplaza los faltantes por la mediana y `escalar()` pone las columnas en la misma escala, que es lo que necesitan los modelos que miden distancias o usan gradientes. Para agregar un modelo se importa su clase y se escribe una línea más en el diccionario. El resto del cuaderno recorre lo que haya en `MODELOS`, así que no hay que tocar nada más. La métrica es el AUC, que solo necesita un puntaje que ordene los trazos, y por eso sirve cualquier clasificador que tenga `predict_proba` o `decision_function`.
+
+**Ejercicio.** Agreguen al menos tres modelos más de scikit-learn y vuelvan a correr desde esa celda.
 '''),
 ("code", r'''
+from sklearn.base import clone
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, HistGradientBoostingClassifier
 from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
 
-def cinco_modelos():
-    preparar = lambda: [SimpleImputer(strategy="median"), StandardScaler()]     # llenar faltantes y poner todo en la misma escala
-    return {
-        "logística": make_pipeline(*preparar(), LogisticRegression(max_iter=3000)),
-        "k vecinos": make_pipeline(*preparar(), KNeighborsClassifier(n_neighbors=25)),
-        "bosque": make_pipeline(SimpleImputer(strategy="median"), RandomForestClassifier(n_estimators=100, min_samples_leaf=2, n_jobs=-1, random_state=0)),
-        "boosting": HistGradientBoostingClassifier(random_state=0),
-        "SVM": make_pipeline(*preparar(), SVC(C=3)),
-    }
+llenar = lambda: SimpleImputer(strategy="median")      # reemplaza los faltantes por la mediana de la columna
+escalar = lambda: StandardScaler()                     # pone todas las columnas en la misma escala
 
+# El catálogo: una línea por modelo. Para agregar uno, escriban otra línea con su nombre y su pipeline.
+MODELOS = {
+    "logística":              make_pipeline(llenar(), escalar(), LogisticRegression(max_iter=3000)),
+    "logística (C = 0,01)":   make_pipeline(llenar(), escalar(), LogisticRegression(C=0.01, max_iter=3000)),
+    "discriminante lineal":   make_pipeline(llenar(), escalar(), LinearDiscriminantAnalysis()),
+    "Bayes ingenuo":          make_pipeline(llenar(), GaussianNB()),
+    "k vecinos (k = 5)":      make_pipeline(llenar(), escalar(), KNeighborsClassifier(n_neighbors=5)),
+    "k vecinos (k = 25)":     make_pipeline(llenar(), escalar(), KNeighborsClassifier(n_neighbors=25)),
+    "árbol":                  make_pipeline(llenar(), DecisionTreeClassifier(min_samples_leaf=20, random_state=0)),
+    "bosque":                 make_pipeline(llenar(), RandomForestClassifier(n_estimators=100, min_samples_leaf=2, n_jobs=-1, random_state=0)),
+    "ExtraTrees":             make_pipeline(llenar(), ExtraTreesClassifier(n_estimators=100, min_samples_leaf=2, n_jobs=-1, random_state=0)),
+    "boosting":               make_pipeline(HistGradientBoostingClassifier(random_state=0)),
+    "SVM":                    make_pipeline(llenar(), escalar(), SVC(C=3)),
+    "red neuronal":           make_pipeline(llenar(), escalar(), MLPClassifier(hidden_layer_sizes=(32,), alpha=1.0, max_iter=300, random_state=0)),
+}
+print(len(MODELOS), "modelos en el catálogo:", ", ".join(MODELOS))
+'''),
+("code", r'''
 def puntaje(modelo, tabla):
     """Un número por registro: más alto significa más sospecha de infarto."""
     return modelo.predict_proba(tabla)[:, 1] if hasattr(modelo, "predict_proba") else modelo.decision_function(tabla)
 
 A = C.values
 resultados, entrenados, segundos = {}, {}, {}
-for nombre, modelo in cinco_modelos().items():
+for nombre, modelo in MODELOS.items():                 # recorre lo que haya en el catálogo
     inicio = time.time()
-    entrenados[nombre] = modelo.fit(A[E], y[E])
-    resultados[nombre] = {"validación": roc_auc_score(y[V], puntaje(modelo, A[V])),
-                          "prueba": roc_auc_score(y[P_], puntaje(modelo, A[P_]))}
+    entrenados[nombre] = clone(modelo).fit(A[E], y[E])
+    resultados[nombre] = {"validación": roc_auc_score(y[V], puntaje(entrenados[nombre], A[V])),
+                          "prueba": roc_auc_score(y[P_], puntaje(entrenados[nombre], A[P_]))}
     segundos[nombre] = time.time() - inicio
 comparacion = pd.concat([pd.DataFrame({"edad y sexo": auc_base}).T, pd.DataFrame(resultados).T])
 comparacion["segundos"] = pd.Series(segundos).round(1)
 display(comparacion.round(3))
 '''),
 ("code", r'''
-fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 4))
-comparacion[["validación", "prueba"]].sort_values("validación").plot.barh(ax=izq, color=["#1D4E89", "#1B998B"])
-izq.set(title="AUC: validación para escoger, prueba para reportar", xlim=(0.5, 1), xlabel="AUC")
+mejor = comparacion.drop(index="edad y sexo")["validación"].idxmax()
 
-fp, vp, _ = roc_curve(y[V], base.predict_proba(sin_senal[V])[:, 1]); der.plot(fp, vp, color="gray", ls="--", label="edad y sexo")
-for nombre, modelo in entrenados.items():
-    fp, vp, _ = roc_curve(y[V], puntaje(modelo, A[V])); der.plot(fp, vp, label=nombre)
+fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 0.32 * len(comparacion) + 1.5))
+comparacion[["validación", "prueba"]].sort_values("validación").plot.barh(ax=izq, color=["#1D4E89", "#9AA5B1"])
+izq.set(title="AUC: validación para escoger, prueba para reportar", xlim=(0.5, 1), xlabel="AUC")
+izq.legend(loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=2, frameon=False)
+
+fp, vp, _ = roc_curve(y[V], base.predict_proba(sin_senal[V])[:, 1]); der.plot(fp, vp, color="#6C4AB6", ls="--", label="edad y sexo")
+for nombre, modelo in entrenados.items():                              # todos en gris y el ganador en rojo
+    fp, vp, _ = roc_curve(y[V], puntaje(modelo, A[V]))
+    der.plot(fp, vp, color="#D7263D" if nombre == mejor else "#9AA5B1", lw=1.8 if nombre == mejor else 0.8, zorder=3 if nombre == mejor else 2,
+             label=nombre if nombre == mejor else None)
+der.plot([], [], color="#9AA5B1", lw=0.8, label="los demás modelos")
 der.plot([0, 1], [0, 1], color="gray", lw=0.5)
 der.set(title="Curvas ROC en validación", xlabel="1 − especificidad", ylabel="sensibilidad"); der.legend(fontsize=8)
 plt.tight_layout(); plt.show()
 
-mejor = comparacion.drop(index="edad y sexo")["validación"].idxmax()
 print(f"Ganador en validación: {mejor} | AUC en validación {comparacion.loc[mejor, 'validación']:.3f} | AUC en prueba {comparacion.loc[mejor, 'prueba']:.3f}")
 print(f"Línea base en prueba: {auc_base['prueba']:.3f}")
 '''),
 ("md", r'''
-Comparen con su segunda apuesta. Los cinco modelos leen la misma tabla y quedan cerca unos de otros. Esa cercanía es una lección sobre las señales: buena parte del resultado se decidió en la sección 2.5, cuando escogimos qué medirle al trazo.
+El ganador se escogió entre muchos candidatos, y eso tiene un costo que conviene mirar. La gráfica siguiente ubica a cada modelo según su puesto en validación y su puesto en prueba.
+'''),
+("code", r'''
+puestos = comparacion.drop(index="edad y sexo")[["validación", "prueba"]].rank(ascending=False, method="min").astype(int)
+n = len(puestos)
+fig, eje = plt.subplots(figsize=(5.6, 5), facecolor="#FBFAF7"); eje.set_facecolor("#FBFAF7")
+eje.plot([1, n], [1, n], color="#9AA5B1", ls="--", lw=1)             # sobre esta línea, el puesto se repite
+eje.scatter(puestos["validación"], puestos["prueba"], s=45, zorder=3, color=["#D7263D" if m == mejor else "#1D4E89" for m in puestos.index])
+for m, fila in puestos.iterrows():
+    eje.annotate(m, (fila["validación"], fila["prueba"]), xytext=(6, 3), textcoords="offset points", fontsize=7.5)
+eje.set(title="Puesto en validación contra puesto en prueba", xlabel="puesto en validación (1 es el mejor)", ylabel="puesto en prueba",
+        xticks=range(1, n + 1), yticks=range(1, n + 1), xlim=(0.5, n + 2.5), ylim=(n + 0.5, 0.5))
+plt.show()
+
+en_orden = comparacion.drop(index="edad y sexo")["validación"].sort_values(ascending=False)
+print(f"El ganador en validación ({mejor}) quedó de puesto {puestos.loc[mejor, 'prueba']} en prueba, entre {n} candidatos.")
+print(f"Ventaja del primero sobre el segundo en validación: {en_orden.iloc[0] - en_orden.iloc[1]:.4f} de AUC, con {int(V.sum())} trazos.")
+print("Modelos que cambiaron de puesto entre validación y prueba:", int((puestos["validación"] != puestos["prueba"]).sum()), "de", n)
+'''),
+("md", r'''
+Si el orden de validación se repitiera en la prueba, todos los puntos caerían sobre la diagonal. Miren cuánto se alejan y comparen esa distancia con la ventaja del primero sobre el segundo. Con tantos candidatos, ¿cuánto del ganador es azar? **Mi respuesta:**
+
+Comparen con su segunda apuesta. Los modelos del catálogo leen la misma tabla y varios quedan cerca unos de otros. Esa cercanía es una lección sobre las señales: buena parte del resultado se decidió en la sección 2.5, cuando escogimos qué medirle al trazo.
 
 ### 3.3 La trampa: partir por pedazos en vez de por paciente
 
-Con señales es común cortar cada registro en ventanas para tener más filas. Hagámoslo: cada trazo de diez segundos se parte en cuatro ventanas de 2,5 segundos, y cada ventana hereda la etiqueta de su trazo. Para que la celda corra rápido uso uno de cada tres trazos. Hay cuatro filas por trazo y dos maneras de separar entrenamiento y prueba.
+Con señales es común cortar cada registro en ventanas para tener más filas. Hagámoslo: cada trazo de diez segundos se parte en cuatro ventanas de 2,5 segundos, y cada ventana hereda la etiqueta de su trazo. Hay cuatro filas por trazo y dos maneras de separar entrenamiento y prueba.
 
 - **Al azar por ventana**, que es lo que hace `train_test_split` por defecto. Tres ventanas de un trazo pueden quedar en entrenamiento y la cuarta en prueba.
 - **Por paciente**: todas las ventanas de todos los trazos de un paciente quedan del mismo lado.
@@ -486,9 +544,8 @@ def tabla_ventanas(lote):
                            np.abs(np.diff(v, axis=1)).mean(axis=1)], axis=1)
 
 inicio = time.time()
-tercio = np.arange(0, len(X), 3)                                     # uno de cada tres trazos
-W = np.nan_to_num(tabla_ventanas(X[tercio]))
-y_w, paciente_w = np.repeat(y[tercio], 4), np.repeat(datos["patient_id"].values[tercio], 4)
+W = np.nan_to_num(np.concatenate([tabla_ventanas(X[i:i + 2000]) for i in range(0, len(X), 2000)]))
+y_w, paciente_w = np.repeat(y, 4), np.repeat(datos["patient_id"].values, 4)
 
 candidatos = {"k vecinos (k = 5)": lambda: make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=5)),
               "boosting": lambda: HistGradientBoostingClassifier(random_state=0)}
@@ -499,7 +556,7 @@ for nombre, crear in candidatos.items():
     a, b_ = next(GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=0).split(W, y_w, paciente_w))
     por_paciente = roc_auc_score(y_w[b_], crear().fit(W[a], y_w[a]).predict_proba(W[b_])[:, 1])
     trampa[nombre] = {"AUC, ventanas al azar": al_azar, "AUC, por paciente": por_paciente, "inflado": al_azar - por_paciente}
-print(f"{len(tercio)} trazos, {len(W)} ventanas, {W.shape[1]} columnas | {time.time() - inicio:.0f} s")
+print(f"{len(X)} trazos, {len(W)} ventanas, {W.shape[1]} columnas | {time.time() - inicio:.0f} s")
 display(pd.DataFrame(trampa).T.round(3))
 '''),
 ("md", r'''
@@ -520,7 +577,7 @@ familias = {"estadísticas": [c for c in C if c.startswith("est_")], "espectro":
             "ritmo": [c for c in C if c.startswith("rit_")], "forma del latido": [c for c in C if c.startswith("lat_")]}
 por_familia = {}
 for nombre, columnas in familias.items():
-    modelo = cinco_modelos()[mejor].fit(C.loc[E, columnas].values, y[E])
+    modelo = clone(MODELOS[mejor]).fit(C.loc[E, columnas].values, y[E])
     por_familia[nombre] = roc_auc_score(y[V], puntaje(modelo, C.loc[V, columnas].values))
 por_familia["todas"] = comparacion.loc[mejor, "validación"]
 
@@ -656,10 +713,5 @@ y corran todo de nuevo con *Entorno de ejecución*, *Ejecutar todo*. Los trazos 
 | Trazos normales marcados por error, de cada 100 | | |
 
 Con la tabla llena, respondan en tres líneas: ¿cuánto se pierde al pasar de doce derivaciones a una? ¿Sirve un reloj para ordenar la fila del cardiólogo? **Mi respuesta:**
-
-### 4.5 Procedencia
-'''),
-("code", r'''
-{nombre: ficha for nombre, ficha in procedencia().items() if nombre.startswith("ptbxl")}
 '''),
 ]

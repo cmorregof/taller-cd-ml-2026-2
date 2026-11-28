@@ -20,6 +20,13 @@ Este cuaderno lo resuelvo yo en vivo durante la primera mitad de la clase. En la
 | **Uso de IA** | Pueden pedirle a Claude que explique una fórmula o que escriba una gráfica. Deben poder explicar sin ayuda la diferencia entre cifra documentada, imputada y estimada, por qué no se cuenta con una sola réplica, cómo se combinan las réplicas y qué supuestos tiene una imputación. |
 | **Entregable** | Este cuaderno corrido en su portafolio, con la frase de la sección 4 escrita por ustedes y la tabla de la variante llena. |
 '''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** Los datos de hoy los publica el DANE en su catálogo de microdatos, a nombre de la JEP, la Comisión de la Verdad y HRDAG. Abran la [ficha del conjunto](https://microdatos.dane.gov.co/index.php/catalog/795) y explórenla cinco minutos. Miren también su [diccionario de datos](https://microdatos.dane.gov.co/index.php/catalog/795/data-dictionary). Respondan mirando la fuente:
+>
+> - ¿Quién produjo los datos y quién los publica?
+> - ¿Qué es una fila de los archivos de reclutamiento, y qué periodo cubren?
+> - ¿Qué licencia tiene el conjunto y a quién hay que citar?
+'''),
 ("code", ARRANQUE),
 ("code", r'''
 # El parámetro del cuaderno. Al final de la clase se cambia esta línea y se corre todo de nuevo.
@@ -69,7 +76,7 @@ Es la misma regla que usa el paquete `verdata` de HRDAG para estos datos.
 ("md", r'''
 ## 2. Datos
 
-El DANE publica el resultado del proyecto en su catálogo de microdatos, número 795, con licencia Creative Commons Atribución 4.0. Para reclutamiento hay 100 réplicas. La función baja el archivo completo, de 73 MB, y entrega las primeras `N_REPLICAS`, una debajo de otra. Tarda menos de medio minuto.
+El DANE publica el resultado del proyecto en su catálogo de microdatos, número 795, con licencia Creative Commons Atribución 4.0. Para reclutamiento hay 100 réplicas, y cada una trae a todas las víctimas documentadas. Una llamada entrega las primeras `N_REPLICAS`, una debajo de otra. Empezamos con diez de las cien porque el informe del proyecto calcula su cifra con diez, y así podemos comparar. En la sección 4.5 se cambia ese número.
 
 El DANE anonimizó los datos antes de publicarlos: las fuentes no tienen nombre, la edad viene en categorías y algunos municipios y meses se volvieron a imputar para que nadie pueda ser identificado.
 '''),
@@ -240,7 +247,7 @@ print(serie.sort_values("ancho relativo (%)", ascending=False).head(4).round(1)[
 ("md", r'''
 La banda es angosta cuando casi todos los registros del año traían la edad y se ensancha en los años con más faltantes. Una cifra desagregada tiene menos datos detrás y más incertidumbre relativa que el total.
 
-### 3.2 ¿Se puede inferir el campo que falta? La línea base y cinco modelos
+### 3.2 ¿Se puede inferir el campo que falta? La línea base y un catálogo de modelos
 
 Las réplicas las produjo HRDAG con un modelo que usó los datos completos, antes de la anonimización. No tenemos ese modelo, pero podemos hacernos la pregunta de fondo con lo publicado: entre los registros que **sí** tienen edad, ¿qué tan bien se adivina si la víctima era menor a partir de los demás campos?
 
@@ -254,12 +261,6 @@ que castiga con dureza a quien dice 0,99 y se equivoca. La línea base es decirl
 '''),
 ("code", r'''
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-from sklearn.naive_bayes import BernoulliNB
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import log_loss, roc_auc_score
 
 def entradas(tabla):
@@ -276,34 +277,86 @@ con_edad = np.flatnonzero(edad_registrada)
 entrena, resto = train_test_split(con_edad, test_size=0.4, stratify=y[con_edad], random_state=0)
 valida, prueba = train_test_split(resto, test_size=0.5, stratify=y[resto], random_state=0)
 print(f"Entradas: {X.shape[1]} columnas | entrenamiento {len(entrena)} víctimas | validación {len(valida)} | prueba {len(prueba)} | menores: {y[entrena].mean() * 100:.1f} %")
+'''),
+("md", r'''
+**Cómo leer la celda del catálogo.** El diccionario `MODELOS` tiene una línea por candidato, con su nombre y un `make_pipeline` que encadena la preparación de la tabla con el clasificador. `escalar()` pone las columnas en la misma escala, que es lo que necesitan los modelos que miden distancias o usan gradientes. Para agregar un modelo se importa su clase y se escribe una línea más en el diccionario. La pérdida logarítmica se calcula con probabilidades, así que solo sirven clasificadores que tengan `predict_proba`. El resto del cuaderno recorre lo que haya en `MODELOS`, así que no hay que tocar nada más.
 
-def cinco_modelos():
-    return {
-        "logística": make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000)),
-        "Bayes ingenuo": BernoulliNB(),
-        "k vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=50)),
-        "bosque": RandomForestClassifier(n_estimators=300, min_samples_leaf=5, n_jobs=-1, random_state=0),
-        "boosting": HistGradientBoostingClassifier(random_state=0),
-    }
+**Ejercicio.** Agreguen al menos tres modelos más de scikit-learn y vuelvan a correr desde esa celda.
+'''),
+("code", r'''
+from sklearn.base import clone
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.naive_bayes import BernoulliNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, HistGradientBoostingClassifier, AdaBoostClassifier
+from sklearn.neural_network import MLPClassifier
 
+escalar = lambda: StandardScaler()                     # pone todas las columnas en la misma escala
+
+# El catálogo: una línea por modelo. Para agregar uno, escriban otra línea con su nombre y su pipeline.
+MODELOS = {
+    "logística":              make_pipeline(escalar(), LogisticRegression(max_iter=2000)),
+    "logística (C = 0,01)":   make_pipeline(escalar(), LogisticRegression(C=0.01, max_iter=2000)),
+    "discriminante lineal":   make_pipeline(escalar(), LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto")),
+    "Bayes ingenuo":          make_pipeline(BernoulliNB()),
+    "k vecinos (k = 15)":     make_pipeline(escalar(), KNeighborsClassifier(n_neighbors=15)),
+    "k vecinos (k = 50)":     make_pipeline(escalar(), KNeighborsClassifier(n_neighbors=50)),
+    "árbol":                  make_pipeline(DecisionTreeClassifier(min_samples_leaf=20, random_state=0)),
+    "bosque":                 make_pipeline(RandomForestClassifier(n_estimators=300, min_samples_leaf=5, n_jobs=-1, random_state=0)),
+    "ExtraTrees":             make_pipeline(ExtraTreesClassifier(n_estimators=300, min_samples_leaf=5, n_jobs=-1, random_state=0)),
+    "boosting":               make_pipeline(HistGradientBoostingClassifier(random_state=0)),
+    "AdaBoost":               make_pipeline(AdaBoostClassifier(n_estimators=50, random_state=0)),
+    "red neuronal":           make_pipeline(escalar(), MLPClassifier(hidden_layer_sizes=(32,), alpha=1.0, max_iter=500, random_state=0)),
+}
+print(len(MODELOS), "modelos en el catálogo:", ", ".join(MODELOS))
+'''),
+("code", r'''
 proporcion = y[entrena].mean()
 filas = {"misma probabilidad para todos": {"pérdida en validación": log_loss(y[valida], np.full(len(valida), proporcion)), "AUC en validación": 0.5,
                                           "pérdida en prueba": log_loss(y[prueba], np.full(len(prueba), proporcion)), "AUC en prueba": 0.5}}
 entrenados = {}
-for nombre, modelo in cinco_modelos().items():
-    entrenados[nombre] = modelo.fit(A[entrena], y[entrena])
-    pv, pp = modelo.predict_proba(A[valida])[:, 1], modelo.predict_proba(A[prueba])[:, 1]
+for nombre, modelo in MODELOS.items():                 # recorre lo que haya en el catálogo
+    entrenados[nombre] = clone(modelo).fit(A[entrena], y[entrena])
+    pv, pp = entrenados[nombre].predict_proba(A[valida])[:, 1], entrenados[nombre].predict_proba(A[prueba])[:, 1]
     filas[nombre] = {"pérdida en validación": log_loss(y[valida], pv), "AUC en validación": roc_auc_score(y[valida], pv),
                      "pérdida en prueba": log_loss(y[prueba], pp), "AUC en prueba": roc_auc_score(y[prueba], pp)}
 comparacion = pd.DataFrame(filas).T
 display(comparacion.round(3))
 
-comparacion[["pérdida en validación", "pérdida en prueba"]].sort_values("pérdida en validación", ascending=False).plot.barh(color=["#1D4E89", "#1B998B"], figsize=(9, 3.6))
+comparacion[["pérdida en validación", "pérdida en prueba"]].sort_values("pérdida en validación", ascending=False).plot.barh(color=["#1D4E89", "#9AA5B1"], figsize=(9, 0.32 * len(comparacion) + 1.5))
 plt.title("Pérdida logarítmica: menor es mejor"); plt.show()
 mejor = comparacion.drop(index="misma probabilidad para todos")["pérdida en validación"].idxmin()
 print(f"Ganador en validación: {mejor} | pérdida en prueba {comparacion.loc[mejor, 'pérdida en prueba']:.3f} (línea base {comparacion.iloc[0]['pérdida en prueba']:.3f}) | AUC en prueba {comparacion.loc[mejor, 'AUC en prueba']:.3f}")
 '''),
 ("md", r'''
+El ganador se escogió entre muchos candidatos, y eso tiene un costo que conviene mirar. La gráfica siguiente ubica a cada modelo según su puesto en validación y su puesto en prueba.
+'''),
+("code", r'''
+candidatos = comparacion.drop(index="misma probabilidad para todos")
+puestos = candidatos[["pérdida en validación", "pérdida en prueba"]].rank(method="min").astype(int)      # la menor pérdida es el puesto 1
+puestos.columns = ["validación", "prueba"]
+n = len(puestos)
+fig, eje = plt.subplots(figsize=(5.6, 5), facecolor="#FBFAF7"); eje.set_facecolor("#FBFAF7")
+eje.plot([1, n], [1, n], color="#9AA5B1", ls="--", lw=1)             # sobre esta línea, el puesto se repite
+eje.scatter(puestos["validación"], puestos["prueba"], s=45, zorder=3, color=["#D7263D" if m == mejor else "#1D4E89" for m in puestos.index])
+for m, fila in puestos.iterrows():
+    eje.annotate(m, (fila["validación"], fila["prueba"]), xytext=(6, 3), textcoords="offset points", fontsize=7.5)
+eje.set(title="Puesto en validación contra puesto en prueba", xlabel="puesto en validación (1 es el mejor)", ylabel="puesto en prueba",
+        xticks=range(1, n + 1), yticks=range(1, n + 1), xlim=(0.5, n + 2.5), ylim=(n + 0.5, 0.5))
+plt.show()
+
+en_orden = candidatos["pérdida en validación"].sort_values()
+print(f"El ganador en validación ({mejor}) quedó de puesto {puestos.loc[mejor, 'prueba']} en prueba, entre {n} candidatos.")
+print(f"Ventaja del primero sobre el segundo en validación: {en_orden.iloc[1] - en_orden.iloc[0]:.4f} de pérdida, con {len(valida)} víctimas.")
+print("Modelos que cambiaron de puesto entre validación y prueba:", int((puestos["validación"] != puestos["prueba"]).sum()), "de", n)
+'''),
+("md", r'''
+Si el orden de validación se repitiera en la prueba, todos los puntos caerían sobre la diagonal. Miren cuánto se alejan y comparen esa distancia con la ventaja del primero sobre el segundo. Con tantos candidatos, ¿cuánto del ganador es azar? **Mi respuesta:**
+
 Lean el resultado con calma. El ganador mejora a la línea base, así que los demás campos dicen algo sobre la edad. Pero su AUC está lejos de 1: con lo publicado no se puede saber con seguridad si un registro sin edad era de un menor. Esa es la razón de fondo para imputar varias veces. Cuando un campo se puede adivinar casi siempre, una sola imputación hace poco daño. Cuando solo se puede adivinar a medias, hay que cargar esa duda hasta la cifra final.
 
 ### 3.3 La trampa: tratar las réplicas como si fueran más datos
@@ -318,8 +371,8 @@ a, b = train_test_split(np.arange(len(y_ap)), test_size=0.2, stratify=y_ap, rand
 victimas_compartidas = len(set(apiladas["match_group_id"].values[a]) & set(apiladas["match_group_id"].values[b]))
 
 trampa = {}
-for nombre in ["k vecinos", "bosque"]:
-    modelo = cinco_modelos()[nombre].fit(A_ap[a], y_ap[a])
+for nombre in ["k vecinos (k = 50)", "bosque"]:
+    modelo = clone(MODELOS[nombre]).fit(A_ap[a], y_ap[a])
     trampa[nombre] = {"AUC, filas apiladas al azar": roc_auc_score(y_ap[b], modelo.predict_proba(A_ap[b])[:, 1]),
                       "AUC, partiendo víctimas": comparacion.loc[nombre, "AUC en prueba"]}
 trampa = pd.DataFrame(trampa).T; trampa["inflado"] = trampa.iloc[:, 0] - trampa.iloc[:, 1]
@@ -349,7 +402,7 @@ propias = []
 inicio = time.time()
 for k in range(N_REPLICAS):
     remuestra = azar.choice(con_edad, len(con_edad), replace=True)
-    modelo = cinco_modelos()[mejor].fit(A[remuestra], y[remuestra])
+    modelo = clone(MODELOS[mejor]).fit(A[remuestra], y[remuestra])
     p = modelo.predict_proba(A[sin_edad])[:, 1]
     propias.append(documentados + int((azar.random(len(p)) < p).sum()))
 nuestra = combinar(propias)
@@ -493,7 +546,7 @@ Respondan en dos o tres líneas cada una.
 
 ### 4.5 Cambien una línea
 
-Vuelvan a la celda de parámetros, cambien `N_REPLICAS = 10` por `N_REPLICAS = 30` y corran todo de nuevo. La descarga trae más réplicas y tarda un poco más.
+Vuelvan a la celda de parámetros, cambien `N_REPLICAS = 10` por `N_REPLICAS = 30` y corran todo de nuevo. Con más réplicas el cuaderno tarda un poco más.
 
 | | 10 réplicas | 30 réplicas |
 |---|---|---|
@@ -504,10 +557,5 @@ Vuelvan a la celda de parámetros, cambien `N_REPLICAS = 10` por `N_REPLICAS = 3
 | Ancho del intervalo, como porcentaje de la cifra | | |
 
 Con la tabla llena, respondan en tres líneas: ¿la cifra cambió más de lo que su intervalo permitía? ¿Para qué sirven más réplicas, si no agregan información sobre las víctimas? **Mi respuesta:**
-
-### 4.6 Procedencia
-'''),
-("code", r'''
-{nombre: ficha for nombre, ficha in procedencia().items() if nombre == "reclutamiento"}
 '''),
 ]

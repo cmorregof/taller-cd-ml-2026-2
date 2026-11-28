@@ -22,6 +22,13 @@ Este proyecto lo hacen por su cuenta, fuera del salón. Es el gemelo de *El noti
 | **Uso de IA** | Claude escribe la API y, si quieren, el análisis. Ustedes deben poder explicar sin ayuda qué cuenta cada ruta, por qué `/brigadas` solo puede mirar el pasado, cómo midieron su método y qué hace cada código de respuesta. |
 | **Entregable** | La dirección de su repositorio, la dirección pública de su API en Railway y este cuaderno corrido, con la sección 3 llena. |
 '''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** Los focos de calor de este proyecto los publica NASA FIRMS. Abran la [página de descargas por país](https://firms.modaps.eosdis.nasa.gov/country/) y explórenla cinco minutos. Busquen a Colombia y miren qué archivos ofrece. Respondan mirando la fuente:
+>
+> - ¿Qué entidad publica estos archivos y de qué sensores hay datos por país?
+> - ¿Hasta qué año llegan los archivos anuales?
+> - ¿Una fila es un incendio o es una detección del satélite? Busquen en el sitio de FIRMS la descripción de las columnas.
+'''),
 ("dado", ARRANQUE),
 ("dado", r'''
 # El parámetro del cuaderno. Al final se cambia esta línea y se corre todo de nuevo.
@@ -65,7 +72,7 @@ Nadie puede cubrirlo todo con cinco brigadas. El **techo** es la cobertura de qu
 ("md", r'''
 ## 2. El dato
 
-NASA FIRMS publica los focos de calor que detecta el sensor MODIS de los satélites Terra y Aqua. Cada fila es un píxel de cerca de un kilómetro donde el satélite vio una anomalía térmica. La función trae los archivos anuales de 2016 a 2025 y le agrega a cada foco su departamento, calculado con los límites de geoBoundaries. Tarda unos veinte segundos.
+NASA FIRMS publica los focos de calor que detecta el sensor MODIS de los satélites Terra y Aqua. Cada fila es un píxel de cerca de un kilómetro donde el satélite vio una anomalía térmica. Una llamada entrega todos los focos de Colombia de 2016 a 2025. Cada foco llega con su departamento, que se calculó con los límites de geoBoundaries.
 
 Según la documentación de FIRMS, `confidence` va de 0 a 100, `frp` es la potencia radiativa del fuego en megavatios, `acq_time` es la hora de paso del satélite en tiempo universal y `type` vale 0 para presunto incendio de vegetación, 1 para volcán activo, 2 para otra fuente fija en tierra y 3 para mar adentro.
 '''),
@@ -151,7 +158,7 @@ La unidad es la semana. Sea $y_{d,t}$ el número de focos del departamento $d$ e
 | Estacional | $c_{d,t}$: promedio de $y_d$ en la misma semana del año, y sus dos vecinas, en los años **anteriores** |
 | Estacional con nivel | $c_{d,t}\cdot\rho_{d,t}$, con $\rho_{d,t}=\dfrac{1+\sum_{k=1}^{4}y_{d,t-k}}{1+\sum_{k=1}^{4}c_{d,t-k}}$ acotado entre $\tfrac14$ y 4 |
 | Regresión de Poisson | $\log\hat y_{d,t}=\beta_0+\beta^\top x_{d,t}$, con $x$ hecho de rezagos, estacional y época del año |
-| *Gradient boosting* de Poisson | Árboles sobre las mismas entradas |
+| Los demás modelos del catálogo `MODELOS` | Regresores de scikit-learn sobre las mismas entradas |
 
 Los tramos van en el tiempo: los modelos se ajustan con 2018 a 2022, se escoge con 2023 y se reporta con 2024 y 2025. Los años 2016 y 2017 solo sirven para que el estacional tenga pasado.
 '''),
@@ -198,12 +205,42 @@ print(f"Semanas: ajuste {E.sum()} | validación {V.sum()} | prueba {P_.sum()}")
 ''', r'''
 # Tabla semanal de focos por departamento, la métrica de cobertura, la línea base y los candidatos sin modelo.
 '''),
-("code", r'''
-from sklearn.linear_model import PoissonRegressor
-from sklearn.ensemble import HistGradientBoostingRegressor
+("md", r'''
+**El catálogo de modelos.** La celda siguiente ya está escrita. El diccionario `MODELOS` tiene una línea por candidato, con su nombre y un `make_pipeline` que encadena la preparación de la tabla con el regresor. `escalar()` pone las entradas en la misma escala, que es lo que necesitan los modelos lineales, los de vecinos y la red. Para agregar un modelo se importa su clase y se escribe una línea más en el diccionario. Su código debe recorrer lo que haya en `MODELOS`, sin nombrar ningún modelo, para que no haya que tocar nada más. Todos reciben las mismas entradas y entregan un número de focos esperado por departamento y semana.
+
+**Ejercicio.** Cuando el cuaderno corra completo, agreguen al menos tres modelos más de scikit-learn y vuelvan a correr desde esa celda.
+'''),
+("dado", r'''
+from sklearn.base import clone
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import PoissonRegressor, Ridge
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import (RandomForestRegressor, ExtraTreesRegressor, GradientBoostingRegressor,
+                              HistGradientBoostingRegressor, AdaBoostRegressor)
+from sklearn.neural_network import MLPRegressor
 
+escalar = lambda: StandardScaler()                     # pone todas las entradas en la misma escala
+
+# El catálogo: una línea por modelo. Para agregar uno, escriban otra línea con su nombre y su pipeline.
+MODELOS = {
+    "regresión de Poisson":             make_pipeline(escalar(), PoissonRegressor(alpha=1e-3, max_iter=500)),
+    "regresión de Poisson (alpha = 1)": make_pipeline(escalar(), PoissonRegressor(alpha=1.0, max_iter=500)),
+    "regresión lineal (Ridge)":         make_pipeline(escalar(), Ridge(alpha=1.0)),
+    "k vecinos (k = 10)":               make_pipeline(escalar(), KNeighborsRegressor(n_neighbors=10)),
+    "k vecinos (k = 50)":               make_pipeline(escalar(), KNeighborsRegressor(n_neighbors=50)),
+    "árbol":                            make_pipeline(DecisionTreeRegressor(min_samples_leaf=20, random_state=0)),
+    "bosque":                           make_pipeline(RandomForestRegressor(n_estimators=200, min_samples_leaf=5, n_jobs=-1, random_state=0)),
+    "ExtraTrees":                       make_pipeline(ExtraTreesRegressor(n_estimators=200, min_samples_leaf=5, n_jobs=-1, random_state=0)),
+    "gradient boosting":                make_pipeline(GradientBoostingRegressor(random_state=0)),
+    "boosting de Poisson":              make_pipeline(HistGradientBoostingRegressor(loss="poisson", random_state=0)),
+    "AdaBoost":                         make_pipeline(AdaBoostRegressor(n_estimators=50, random_state=0)),
+    "red neuronal":                     make_pipeline(escalar(), MLPRegressor(hidden_layer_sizes=(32,), alpha=1.0, max_iter=2000, early_stopping=True, random_state=0)),
+}
+print(len(MODELOS), "modelos en el catálogo:", ", ".join(MODELOS))
+'''),
+("code", r'''
 entradas = ["semana pasada", "hace dos semanas", "promedio de 4", "estacional", "seno de la época", "coseno de la época"]
 def tabla_larga(semanas):
     t, d = np.repeat(semanas, D), np.tile(np.arange(D), len(semanas))
@@ -212,13 +249,12 @@ def tabla_larga(semanas):
     return X, Y[t, d]
 
 completas = ~np.isnan(c).any(axis=1) & ~np.isnan(suma4(Y)).any(axis=1)
-modelos = {"regresión de Poisson": make_pipeline(StandardScaler(), PoissonRegressor(alpha=1e-3, max_iter=500)),
-           "boosting de Poisson": HistGradientBoostingRegressor(loss="poisson", random_state=0)}
-for nombre, modelo in modelos.items():
-    modelo.fit(*tabla_larga(np.flatnonzero(E & completas)))
+entrenados = {}
+semanas = np.flatnonzero((V | P_) & completas)
+for nombre, modelo in MODELOS.items():                 # recorre lo que haya en el catálogo
+    entrenados[nombre] = clone(modelo).fit(*tabla_larga(np.flatnonzero(E & completas)))
     pronostico = np.full_like(Y, np.nan)
-    semanas = np.flatnonzero((V | P_) & completas)
-    pronostico[semanas] = modelo.predict(tabla_larga(semanas)[0]).reshape(len(semanas), D)
+    pronostico[semanas] = entrenados[nombre].predict(tabla_larga(semanas)[0]).reshape(len(semanas), D)
     pronosticos[nombre] = pronostico
 
 techo = {"validación": cobertura(Y, V).mean(), "prueba": cobertura(Y, P_).mean()}
@@ -227,7 +263,7 @@ comparacion = pd.DataFrame({nombre: {"validación": cobertura(p, V).mean(), "pru
 display((comparacion[["validación", "prueba"]] * 100).round(1).join(comparacion["error absoluto medio (validación)"].round(1)))
 print(f"Techo (quien conoce el futuro): {techo['validación'] * 100:.1f} % en validación | {techo['prueba'] * 100:.1f} % en prueba")
 
-ax = (comparacion[["validación", "prueba"]] * 100).sort_values("validación").plot.barh(color=["#1D4E89", "#1B998B"], figsize=(9, 3.8))
+ax = (comparacion[["validación", "prueba"]] * 100).sort_values("validación").plot.barh(color=["#1D4E89", "#9AA5B1"], figsize=(9, 0.32 * len(comparacion) + 1.5))
 ax.axvline(techo["validación"] * 100, color="gray", ls=":"); ax.set(title=f"Cobertura con {N_BRIGADAS} brigadas (línea punteada: techo en validación)", xlabel="% de los focos de la semana")
 plt.show()
 
@@ -238,11 +274,39 @@ remuestreos = [dif[azar.integers(0, len(dif), len(dif))].mean() for _ in range(2
 print(f"Ganador en validación: {mejor} | cobertura en prueba {comparacion.loc[mejor, 'prueba'] * 100:.1f} % | línea base {comparacion.loc['semana pasada (línea base)', 'prueba'] * 100:.1f} %")
 print(f"Ventaja sobre la línea base en prueba: {dif.mean() * 100:+.1f} puntos (IC 95 %: {np.percentile(remuestreos, 2.5) * 100:+.1f} a {np.percentile(remuestreos, 97.5) * 100:+.1f}), con {len(dif)} semanas")
 ''', r'''
-# Dos modelos ajustados (por ejemplo, regresión de Poisson y boosting), la tabla comparativa con el techo,
-# el ganador escogido EN VALIDACIÓN y su ventaja sobre la línea base en prueba, con intervalo.
+# Los modelos del catálogo ajustados recorriendo el diccionario (`for nombre, modelo in MODELOS.items():`, con una
+# copia de cada uno hecha con sklearn.base.clone), la tabla comparativa con el techo, el ganador escogido
+# EN VALIDACIÓN y su ventaja sobre la línea base en prueba, con intervalo.
 '''),
 ("md", r'''
 **Mi lectura** (¿quién gana?, ¿la ventaja se distingue del ruido?, ¿qué tan lejos queda del techo?):
+
+El ganador se escogió entre muchos candidatos, y eso tiene un costo que conviene mirar. Hagan una gráfica pequeña que ubique a cada candidato según su puesto en validación y su puesto en prueba.
+'''),
+("code", r'''
+candidatos = comparacion.drop(index="semana pasada (línea base)")
+puestos = candidatos[["validación", "prueba"]].rank(ascending=False, method="min").astype(int)
+n = len(puestos)
+fig, eje = plt.subplots(figsize=(6.2, 5.4), facecolor="#FBFAF7"); eje.set_facecolor("#FBFAF7")
+eje.plot([1, n], [1, n], color="#9AA5B1", ls="--", lw=1)             # sobre esta línea, el puesto se repite
+eje.scatter(puestos["validación"], puestos["prueba"], s=45, zorder=3, color=["#D7263D" if m == mejor else "#1D4E89" for m in puestos.index])
+for m, fila in puestos.iterrows():
+    eje.annotate(m, (fila["validación"], fila["prueba"]), xytext=(6, 3), textcoords="offset points", fontsize=7.5)
+eje.set(title="Puesto en validación contra puesto en prueba", xlabel="puesto en validación (1 es el mejor)", ylabel="puesto en prueba",
+        xticks=range(1, n + 1), yticks=range(1, n + 1), xlim=(0.5, n + 4), ylim=(n + 0.5, 0.5))
+plt.show()
+
+en_orden = candidatos["validación"].sort_values(ascending=False)
+print(f"El ganador en validación ({mejor}) quedó de puesto {puestos.loc[mejor, 'prueba']} en prueba, entre {n} candidatos.")
+print(f"Ventaja del primero sobre el segundo en validación: {(en_orden.iloc[0] - en_orden.iloc[1]) * 100:.2f} puntos de cobertura, con {int(V.sum())} semanas.")
+print("Candidatos que cambiaron de puesto entre validación y prueba:", int((puestos["validación"] != puestos["prueba"]).sum()), "de", n)
+''', r'''
+# Una gráfica pequeña con un punto por candidato (sin la línea base): su puesto en validación contra su puesto
+# en prueba, con el nombre de cada uno, la diagonal punteada y el ganador de validación en rojo.
+# Imprimir en qué puesto quedó el ganador en prueba y la ventaja del primero sobre el segundo en validación.
+'''),
+("md", r'''
+Si el orden de validación se repitiera en la prueba, todos los puntos caerían sobre la diagonal. Con tantos candidatos, ¿cuánto del ganador es azar? **Mi respuesta:**
 
 ### 3.4 La trampa: mirar el futuro
 
@@ -275,7 +339,7 @@ print(f"Estacional: usar años futuros la cambia en {trampa.iloc[3, 0] - trampa.
 ### 3.5 Explicar: ¿la época del año o la semana pasada?
 '''),
 ("code", r'''
-poisson = modelos["regresión de Poisson"]
+poisson = entrenados["regresión de Poisson"]
 coeficientes = pd.Series(poisson[-1].coef_, index=entradas).sort_values()
 coeficientes.plot.barh(color="#1D4E89", figsize=(8, 3))
 plt.title("Regresión de Poisson: coeficientes sobre entradas estandarizadas"); plt.xlabel("efecto sobre el logaritmo de los focos esperados"); plt.show()
@@ -389,12 +453,8 @@ Dirección de mi repositorio:
 
 ¿Cuánto cuesta, en focos sin cubrir, tener dos brigadas menos? **Mi respuesta:**
 
-### Procedencia y entrega
-'''),
-("dado", r'''
-{nombre: ficha for nombre, ficha in procedencia().items() if nombre == "firms_colombia"}
-'''),
-("md", r'''
+### Entrega
+
 **Para entregar:** el cuaderno corrido en su portafolio, carpeta `clase09/`, con las dos direcciones escritas en la sección 3.7.
 '''),
 ]

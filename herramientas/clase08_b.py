@@ -17,15 +17,22 @@ Este cuaderno lo resuelve cada uno en la segunda mitad de la clase. Es el gemelo
 
 | Ficha | |
 |---|---|
-| **Objetivo pedagógico** | Dirigir a una IA para que escriba el flujo completo de un clasificador de audio (ventanas, espectrograma, MFCC, cinco modelos, partición por grabación) y auditar lo que escribió. |
+| **Objetivo pedagógico** | Dirigir a una IA para que escriba el flujo completo de un clasificador de audio (ventanas, espectrograma, MFCC, un catálogo de modelos, partición por grabación) y auditar lo que escribió. |
 | **Enfoque** | Machine Learning. |
 | **Resultados de aprendizaje** | 1 (formular), 2 (preparar datos), 3 (flujo reproducible), 4 (implementar y evaluar), 5 (comunicar) y 6 (reflexión ética, técnica y operativa). |
 | **Uso de IA** | El código lo escribe Claude, a pedido de ustedes, celda por celda. Ustedes deben poder explicar sin ayuda qué es un espectrograma, qué resume un MFCC, por qué se parte por grabación y no por ventana, y cómo se escogieron las cien grabaciones del experto. |
 | **Entregable** | El cuaderno completo y corrido en su portafolio, con las predicciones escritas, la sección de auditoría llena, la decisión en tres frases y la tabla de la variante. |
 
-**Cómo se trabaja.** Las celdas de código están vacías. Cada una trae un comentario que dice qué debe lograr y qué nombres de variable debe dejar. Copien el comentario en Claude, pidan el código, léanlo antes de pegarlo y córranlo. Si falla, lean el error antes de pedir ayuda. Lo único que ya está escrito es el arranque, los parámetros y la carga del dato.
+**Cómo se trabaja.** Las celdas de código están vacías. Cada una trae un comentario que dice qué debe lograr y qué nombres de variable debe dejar. Copien el comentario en Claude, pidan el código, léanlo antes de pegarlo y córranlo. Si falla, lean el error antes de pedir ayuda. Lo único que ya está escrito es el arranque, los parámetros, la carga del dato y el catálogo de modelos de la sección 3.2.
 
-**Cómputo.** Todo corre en CPU. La descarga pesa 257 MB y tarda menos de un minuto. Sacar las características de las mil grabaciones tarda entre uno y dos minutos.
+**Cómputo.** Todo corre en CPU. La descarga tarda menos de un minuto. Sacar las características de las mil grabaciones tarda entre uno y dos minutos.
+'''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** Las grabaciones de hoy salen de la [muestra pública de BirdCLEF+ 2025 en Hugging Face](https://huggingface.co/datasets/mteb/birdclef25-mini). Abran la página y explórenla cinco minutos con el visor de datos. Cada grabación trae además, en la columna `url`, el enlace a su página original en xeno-canto o en iNaturalist. Abran una. Respondan mirando la fuente:
+>
+> - ¿Qué es una fila de esta tabla y qué columnas la describen?
+> - ¿Quién grabó el audio de la fila que abrieron, y quién publica la muestra?
+> - ¿Qué licencia tiene esa grabación? ¿La muestra de Hugging Face declara una licencia propia?
 '''),
 ("dado", ARRANQUE),
 ("dado", r'''
@@ -48,7 +55,7 @@ Ese equipo necesita tres respuestas:
 2. **Explicar.** ¿Qué características del sonido separan a las especies, y qué especies confunde el modelo entre sí?
 3. **Decidir.** ¿Qué grabaciones revisa primero el experto, si solo alcanza a oír cien?
 
-**El dato.** BirdCLEF+ 2025 es una competencia de reconocimiento de especies por su sonido, organizada alrededor de la Reserva Natural El Silencio, en el Magdalena Medio. Sus grabaciones de entrenamiento vienen de xeno-canto y de iNaturalist, donde las suben aficionados y científicos de muchos países. La competencia vive en Kaggle y exige cuenta. Aquí usamos una muestra pública de mil de esas grabaciones, 20 por cada una de 50 especies de aves, que se descarga de Hugging Face sin cuenta.
+**El dato.** BirdCLEF+ 2025 es una competencia de reconocimiento de especies por su sonido, organizada alrededor de la Reserva Natural El Silencio, en el Magdalena Medio. Sus grabaciones de entrenamiento vienen de xeno-canto y de iNaturalist, donde las suben aficionados y científicos de muchos países. El conjunto completo de la competencia vive en Kaggle, exige cuenta y trae mucho más audio del que alcanzamos a procesar en una clase. Por eso aquí usamos un subconjunto: una muestra pública de mil de esas grabaciones, 20 por cada una de 50 especies de aves.
 
 **La métrica.** Con 50 especies igual de frecuentes, quien adivina al azar acierta 1 de cada 50. Medimos la exactitud por grabación y la exactitud entre las tres primeras:
 
@@ -190,7 +197,7 @@ print(f"Ventanas: {len(C)} | columnas: {C.shape[1]} | grabaciones: {len(set(de_g
 print("Frecuencias de muestreo encontradas:", frecuencias, "| ventanas por grabación:", pd.Series(de_grabacion).value_counts().describe()[["min", "50%", "max"]].to_dict())
 ''', r'''
 # Esta celda debe convertir las mil grabaciones en una tabla con una fila por VENTANA de 5 segundos.
-#   - Recorrer `for fila, onda, fs in grabaciones(aves):` (no cargar todo en memoria a la vez).
+#   - Recorrer `for fila, onda, fs in grabaciones(aves):`.
 #   - Cortar cada onda en ventanas de 5 s sin traslape, máximo SEGUNDOS_OIDOS // 5 ventanas por grabación,
 #     desde el comienzo. Si la grabación dura menos de 5 s, completarla con ceros.
 #   - Para cada ventana: espectrograma mel (n_fft=1024, hop_length=512, n_mels=48, fmin=300, fmax=14000),
@@ -293,59 +300,114 @@ print({n: {k: round(v, 3) for k, v in f.items()} for n, f in filas_tabla.items()
 #     las columnas mfcc_media_0, mfcc_media_1 y mfcc_media_2.
 '''),
 ("md", r'''
-### 3.2 Cinco modelos
+### 3.2 El catálogo de modelos
 
-| Modelo | Idea en una línea |
+| Familia | Idea en una línea |
 |---|---|
-| Regresión logística | $P(y=k\mid x)=e^{\beta_k^\top x}/\sum_j e^{\beta_j^\top x}$ |
+| Regresión logística, con dos niveles de regularización | $P(y=k\mid x)=e^{\beta_k^\top x}/\sum_j e^{\beta_j^\top x}$ |
 | Análisis discriminante lineal | Supone una normal por especie con la misma covarianza $\Sigma$: $\delta_k(x)=x^\top\Sigma^{-1}\mu_k-\tfrac12\mu_k^\top\Sigma^{-1}\mu_k+\log\pi_k$ |
-| $k$ vecinos | Vota con las ventanas de entrenamiento más parecidas |
-| Bosque aleatorio | Promedia muchos árboles entrenados sobre remuestreos |
+| Bayes ingenuo | Supone que las columnas son independientes dentro de cada especie |
+| $k$ vecinos, con dos valores de $k$ | Vota con las ventanas de entrenamiento más parecidas |
+| Árbol de decisión | Parte la tabla con preguntas de sí o no sobre una columna a la vez |
+| Bosque aleatorio y *ExtraTrees* | Promedian muchos árboles, entrenados sobre remuestreos o con cortes al azar |
+| *Gradient boosting* por histogramas | Suma árboles pequeños, cada uno corrigiendo el error del anterior |
+| Máquina de soporte vectorial | Busca la frontera con más margen, curva gracias a un núcleo gaussiano |
 | Red neuronal pequeña | Una capa oculta de 128 unidades |
 
 La regla: gana el de mayor exactitud por grabación en **validación**, y su exactitud en **prueba** es la que se reporta.
+
+**Cómo leer la celda del catálogo.** Esta celda ya está escrita. El diccionario `MODELOS` tiene una línea por candidato, con su nombre y un `make_pipeline` que encadena la preparación de la tabla con el clasificador. `escalar()` pone las columnas en la misma escala, que es lo que necesitan los modelos que miden distancias o usan gradientes. Para agregar un modelo se importa su clase y se escribe una línea más en el diccionario. La grabación se decide promediando probabilidades, así que solo sirven clasificadores que tengan `predict_proba`. El código que le pidan a Claude en las celdas siguientes debe recorrer lo que haya en `MODELOS`, sin nombrar ningún modelo, para que no haya que tocar nada más.
+
+**Ejercicio.** Cuando el cuaderno corra completo, agreguen al menos tres modelos más de scikit-learn y vuelvan a correr desde esa celda.
 '''),
-("code", r'''
+("dado", r'''
+from sklearn.base import clone
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, HistGradientBoostingClassifier
+from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 
-def cinco_modelos():
-    return {
-        "logística": make_pipeline(StandardScaler(), LogisticRegression(C=0.3, max_iter=2000)),
-        "discriminante lineal": make_pipeline(StandardScaler(), LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto")),
-        "k vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=15, weights="distance")),
-        "bosque": RandomForestClassifier(n_estimators=300, n_jobs=-1, random_state=0),
-        "red neuronal": make_pipeline(StandardScaler(), MLPClassifier(hidden_layer_sizes=(128,), alpha=1.0, max_iter=400, random_state=0)),
-    }
+escalar = lambda: StandardScaler()                     # pone todas las columnas en la misma escala
 
+# El catálogo: una línea por modelo. Para agregar uno, escriban otra línea con su nombre y su pipeline.
+MODELOS = {
+    "logística":              make_pipeline(escalar(), LogisticRegression(C=0.3, max_iter=2000)),
+    "logística (C = 0,01)":   make_pipeline(escalar(), LogisticRegression(C=0.01, max_iter=2000)),
+    "discriminante lineal":   make_pipeline(escalar(), LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto")),
+    "Bayes ingenuo":          make_pipeline(GaussianNB()),
+    "k vecinos (k = 5)":      make_pipeline(escalar(), KNeighborsClassifier(n_neighbors=5, weights="distance")),
+    "k vecinos (k = 15)":     make_pipeline(escalar(), KNeighborsClassifier(n_neighbors=15, weights="distance")),
+    "árbol":                  make_pipeline(DecisionTreeClassifier(min_samples_leaf=5, random_state=0)),
+    "bosque":                 make_pipeline(RandomForestClassifier(n_estimators=300, n_jobs=-1, random_state=0)),
+    "ExtraTrees":             make_pipeline(ExtraTreesClassifier(n_estimators=300, n_jobs=-1, random_state=0)),
+    "boosting":               make_pipeline(HistGradientBoostingClassifier(max_iter=30, max_depth=3, random_state=0)),
+    "SVM":                    make_pipeline(escalar(), SVC(C=3, probability=True, random_state=0)),
+    "red neuronal":           make_pipeline(escalar(), MLPClassifier(hidden_layer_sizes=(128,), alpha=1.0, max_iter=400, random_state=0)),
+}
+print(len(MODELOS), "modelos en el catálogo:", ", ".join(MODELOS))
+'''),
+("code", r'''
 entrenados = {}
-for nombre, modelo in cinco_modelos().items():
+for nombre, modelo in MODELOS.items():                 # recorre lo que haya en el catálogo
     inicio = time.time()
-    entrenados[nombre] = modelo.fit(C.loc[E, todas].values, y_vent[E])
-    en_prueba = exactitudes(modelo, todas, P_, g_prueba)
-    filas_tabla[nombre] = {"validación": exactitudes(modelo, todas, V, g_valida)[0], "prueba": en_prueba[0],
+    entrenados[nombre] = clone(modelo).fit(C.loc[E, todas].values, y_vent[E])
+    en_prueba = exactitudes(entrenados[nombre], todas, P_, g_prueba)
+    filas_tabla[nombre] = {"validación": exactitudes(entrenados[nombre], todas, V, g_valida)[0], "prueba": en_prueba[0],
                            "top-3 en prueba": en_prueba[1], "segundos": round(time.time() - inicio, 1)}
 comparacion = pd.DataFrame(filas_tabla).T
 display((comparacion[["validación", "prueba", "top-3 en prueba"]] * 100).round(1).join(comparacion["segundos"]))
 
-(comparacion[["validación", "prueba"]] * 100).sort_values("validación").plot.barh(color=["#1D4E89", "#1B998B"], figsize=(9, 4))
+(comparacion[["validación", "prueba"]] * 100).sort_values("validación").plot.barh(color=["#1D4E89", "#9AA5B1"], figsize=(9, 0.32 * len(comparacion) + 1.5))
 plt.xlabel("exactitud por grabación (%)"); plt.title("Validación para escoger, prueba para reportar"); plt.show()
 
-mejor = comparacion.drop(index=["azar", "tres MFCC"])["validación"].idxmax()
+candidatos = comparacion.drop(index=["azar", "tres MFCC"])
+mejor = candidatos["validación"].idxmax()
 print(f"Ganador en validación: {mejor} | exactitud en prueba {comparacion.loc[mejor, 'prueba'] * 100:.1f} % | entre las tres primeras {comparacion.loc[mejor, 'top-3 en prueba'] * 100:.1f} %")
+print("Modelos empatados en el primer puesto de validación:", int((candidatos["validación"] == candidatos["validación"].max()).sum()))
 ''', r'''
-# Esta celda debe definir `cinco_modelos()` (regresión logística, análisis discriminante lineal con encogimiento,
-# k vecinos, bosque aleatorio y una red neuronal de una capa oculta; los que usan distancias o gradientes
-# van dentro de un pipeline con StandardScaler), entrenarlos con las ventanas de entrenamiento y medir
-# con `exactitudes` la exactitud POR GRABACIÓN en validación y en prueba, y la top-3 en prueba.
-# Debe mostrar una tabla con las líneas base y los cinco modelos, una gráfica de barras, y dejar:
+# Esta celda debe recorrer el diccionario `MODELOS` de la celda anterior, sin nombrar ningún modelo:
+# `for nombre, modelo in MODELOS.items():`. Para cada uno debe entrenar una copia (sklearn.base.clone) con las
+# ventanas de entrenamiento y medir con `exactitudes` la exactitud POR GRABACIÓN en validación y en prueba,
+# y la top-3 en prueba. Debe mostrar una tabla con las líneas base y todos los modelos del catálogo,
+# una gráfica de barras, y dejar:
 #   `entrenados` (diccionario de modelos ya ajustados), `comparacion` (la tabla) y `mejor`
-#   (el nombre del ganador EN VALIDACIÓN).
+#   (el nombre del ganador EN VALIDACIÓN). Si hay empate en el primer puesto, debe decir cuántos empataron.
 '''),
 ("md", r'''
 Comparen con su primera apuesta. **Mi lectura** (¿cuántas veces mejor que el azar?, ¿sirve para algo una exactitud así?):
+
+El ganador se escogió entre muchos candidatos, y eso tiene un costo que conviene mirar. Pidan una gráfica pequeña que ubique a cada modelo según su puesto en validación y su puesto en prueba.
+'''),
+("code", r'''
+puestos = candidatos[["validación", "prueba"]].rank(ascending=False, method="min").astype(int)
+n = len(puestos)
+fig, eje = plt.subplots(figsize=(5.6, 5), facecolor="#FBFAF7"); eje.set_facecolor("#FBFAF7")
+eje.plot([1, n], [1, n], color="#9AA5B1", ls="--", lw=1)             # sobre esta línea, el puesto se repite
+eje.scatter(puestos["validación"], puestos["prueba"], s=45, zorder=3, color=["#D7263D" if m == mejor else "#1D4E89" for m in puestos.index])
+for m, fila in puestos.iterrows():
+    eje.annotate(m, (fila["validación"], fila["prueba"]), xytext=(6, 3), textcoords="offset points", fontsize=7.5)
+eje.set(title="Puesto en validación contra puesto en prueba", xlabel="puesto en validación (1 es el mejor)", ylabel="puesto en prueba",
+        xticks=range(1, n + 1), yticks=range(1, n + 1), xlim=(0.5, n + 2.5), ylim=(n + 0.5, 0.5))
+plt.show()
+
+en_orden = candidatos["validación"].sort_values(ascending=False)
+print(f"El ganador en validación ({mejor}) quedó de puesto {puestos.loc[mejor, 'prueba']} en prueba, entre {n} candidatos.")
+print(f"Ventaja del primero sobre el segundo en validación: {(en_orden.iloc[0] - en_orden.iloc[1]) * 100:.1f} puntos, con {len(g_valida)} grabaciones. Una grabación vale {100 / len(g_valida):.1f} puntos.")
+print("Modelos que cambiaron de puesto entre validación y prueba:", int((puestos["validación"] != puestos["prueba"]).sum()), "de", n)
+''', r'''
+# Esta celda debe dibujar una gráfica pequeña con un punto por modelo del catálogo: en el eje horizontal su puesto
+# en validación (1 es el mejor) y en el vertical su puesto en prueba, con el nombre de cada modelo, la diagonal
+# punteada y el ganador de validación en rojo (#D7263D; los demás en azul #1D4E89). Debe imprimir en qué puesto
+# quedó el ganador en prueba, la ventaja del primero sobre el segundo en validación y cuánto vale una sola grabación.
+'''),
+("md", r'''
+Si el orden de validación se repitiera en la prueba, todos los puntos caerían sobre la diagonal. Miren cuánto se alejan y comparen la ventaja del ganador con lo que vale una sola grabación. Con tantos candidatos, ¿cuánto del ganador es azar? **Mi respuesta:**
 
 ### 3.3 La trampa: barajar ventanas
 
@@ -355,15 +417,16 @@ Repitan el experimento de la demostración. Tomen dos de los modelos y sepárenl
 A = C[todas].values
 a, b = train_test_split(np.arange(len(A)), test_size=0.2, stratify=y_vent, random_state=0)       # barajando ventanas
 trampa = {}
-for nombre in ["k vecinos", "bosque"]:
-    al_azar = float((cinco_modelos()[nombre].fit(A[a], y_vent[a]).predict(A[b]) == y_vent[b]).mean())
+for nombre in ["k vecinos (k = 15)", "bosque"]:
+    al_azar = float((clone(MODELOS[nombre]).fit(A[a], y_vent[a]).predict(A[b]) == y_vent[b]).mean())
     por_grab = float((entrenados[nombre].predict(A[P_]) == y_vent[P_]).mean())
     trampa[nombre] = {"ventanas al azar": al_azar, "por grabación": por_grab, "inflado": al_azar - por_grab}
 compartidas = len(set(de_grabacion[a]) & set(de_grabacion[b]))
 display((pd.DataFrame(trampa).T * 100).round(1))
 print(f"Al barajar, {compartidas} de las {len(set(de_grabacion[b]))} grabaciones de la prueba tienen otra ventana suya en el entrenamiento.")
 ''', r'''
-# Esta celda debe mostrar la trampa con números. Para k vecinos y para el bosque:
+# Esta celda debe mostrar la trampa con números. Para dos modelos del catálogo, "k vecinos (k = 15)" y "bosque"
+# (una copia nueva de cada uno, con sklearn.base.clone):
 #   - separar las VENTANAS al azar (train_test_split, 20 % de prueba, estratificado, random_state=0),
 #     entrenar y medir la exactitud por ventana;
 #   - medir la exactitud por ventana del mismo modelo con la separación por grabación de 3.1.
@@ -381,7 +444,7 @@ Dos preguntas. ¿Qué familia de columnas sostiene el resultado? ¿Qué especies
 familias = {"mfcc": [c for c in todas if c.startswith("mfcc_")], "mel": [c for c in todas if c.startswith("mel_")], "todas": todas}
 por_familia = {}
 for nombre, columnas in familias.items():
-    modelo = cinco_modelos()[mejor].fit(C.loc[E, columnas].values, y_vent[E])
+    modelo = clone(MODELOS[mejor]).fit(C.loc[E, columnas].values, y_vent[E])
     por_familia[nombre] = exactitudes(modelo, columnas, V, g_valida)[0] * 100
 print("Exactitud en validación por familia (%):", {n: round(v, 1) for n, v in por_familia.items()})
 
@@ -485,7 +548,7 @@ Llenen las filas vacías.
 
 | Decisión | Alternativa descartada | Por qué |
 |---|---|---|
-| Muestra de 1.000 grabaciones de Hugging Face | Las grabaciones completas de Kaggle | No exige cuenta y pesa 257 MB |
+| Muestra de 1.000 grabaciones de Hugging Face | Las grabaciones completas de Kaggle | No exige cuenta y se alcanza a procesar en una clase |
 | Ventanas de 5 segundos desde el comienzo | | |
 | Restar el piso de ruido por banda | | |
 | Partición por grabación, 60 / 20 / 20 | | |
@@ -515,12 +578,8 @@ Vuelvan a la celda de parámetros, cambien `SEGUNDOS_OIDOS = 30` por `SEGUNDOS_O
 
 Con la tabla llena, respondan en tres líneas: ¿cuánto se gana por oír más de cada grabación? ¿De dónde creen que viene la ganancia, de tener más ventanas para entrenar o de promediar más ventanas al predecir? **Mi respuesta:**
 
-### 4.6 Procedencia y entrega
-'''),
-("dado", r'''
-{nombre: ficha for nombre, ficha in procedencia().items() if nombre == "aves_magdalena"}
-'''),
-("md", r'''
+### 4.6 Entrega
+
 **Para entregar:** en Colab, menú *Archivo*, *Guardar una copia en GitHub*, y escojan su repositorio de portafolio, carpeta `clase08/`. Antes de guardar usen *Entorno de ejecución*, *Reiniciar sesión y ejecutar todo*: un cuaderno que no corre de principio a fin desde cero no se califica.
 '''),
 ]
