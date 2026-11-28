@@ -12,11 +12,18 @@ Este cuaderno lo resuelvo yo en vivo durante la primera mitad de la clase. En la
 
 | Ficha | |
 |---|---|
-| **Objetivo pedagógico** | Convertir texto en una tabla de números con TF-IDF, comparar cinco clasificadores contra una regla de palabras clave, leer en los coeficientes de qué se queja la gente y usar el clasificador para medir una proporción sin caer en el error de contar con él. |
+| **Objetivo pedagógico** | Convertir texto en una tabla de números con TF-IDF, comparar un catálogo de clasificadores contra una regla de palabras clave, leer en los coeficientes de qué se queja la gente y usar el clasificador para medir una proporción sin caer en el error de contar con él. |
 | **Enfoque** | Ciencia de Datos. |
 | **Resultados de aprendizaje** | 1 (formular el problema y la métrica), 2 (seleccionar y preparar datos), 4 (implementar y evaluar un modelo), 5 (comunicar) y 6 (reflexión ética, técnica y operativa). |
 | **Uso de IA** | Pueden pedirle a Claude que explique una celda, que proponga otra lista de palabras vacías o que escriba una gráfica. Deben poder explicar sin ayuda qué número guarda cada celda de una matriz TF-IDF, por qué la exactitud engaña cuando las quejas son pocas, qué dice un coeficiente de la regresión logística y por qué contar las predicciones no mide bien una proporción. |
 | **Entregable** | Este cuaderno corrido de principio a fin en su portafolio, con las predicciones escritas, la decisión en tres frases y la tabla de la variante llenas. |
+'''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** Las reseñas de hoy salen de [la copia de Rest-Mex 2023 que está en Hugging Face](https://huggingface.co/datasets/javilonso/rest23_sentiment_data). El conjunto nació en una competencia académica, que tiene [su propia página](https://sites.google.com/cimat.mx/rest-mex2023). Abran los dos enlaces y explórenlos cinco minutos antes de correr nada. Respondan mirando la fuente:
+>
+> - ¿Quién organizó la competencia y qué les pedía predecir a los participantes?
+> - ¿Qué es una fila del conjunto y qué columnas trae?
+> - ¿La copia de Hugging Face publica un diccionario de sus códigos o una licencia?
 '''),
 ("code", ARRANQUE),
 ("md", r'''
@@ -37,7 +44,7 @@ Imagínense una mesa de turismo que reúne a tres destinos: México, Cuba y Colo
 2. **Explicar.** ¿Qué palabras distinguen una queja? ¿De qué se queja la gente?
 3. **Decidir.** ¿En qué país y tipo de servicio conviene intervenir primero, y sobre qué queja?
 
-**El dato.** Rest-Mex 2023 es el conjunto de una competencia académica de análisis de sentimiento en español: reseñas de turismo con su calificación. Trabajamos con una muestra de 60.000 reseñas, 20.000 por país. El conjunto es para uso académico y no se redistribuye, así que cada uno lo descarga de la fuente.
+**El dato.** Rest-Mex 2023 es el conjunto de una competencia académica de análisis de sentimiento en español: reseñas de turismo con su calificación. Trabajamos con el conjunto completo, que junta las dos particiones publicadas. El conjunto es para uso académico y no se redistribuye, así que cada uno lo descarga de la fuente.
 
 **La métrica.** Positivo es «queja». Las quejas son pocas, y con clases desbalanceadas la exactitud no sirve. Uso la precisión y la sensibilidad,
 
@@ -60,9 +67,8 @@ Para comparar modelos sin fijar un umbral uso la **precisión promedio** (AP), q
 ## 2. Datos
 '''),
 ("code", r'''
-inicio = time.time()
 crudo = descargar("restmex")
-print(f"Tiempo: {time.time() - inicio:.0f} s | {len(crudo)} reseñas")
+print(len(crudo), "reseñas")
 crudo.head(4)
 '''),
 ("md", r'''
@@ -179,8 +185,9 @@ def vectorizador():
     return TfidfVectorizer(min_df=3, ngram_range=(1, 2), sublinear_tf=True, strip_accents="unicode")
 
 inicio = time.time()
-tfidf = vectorizador().fit(datos["texto"].iloc[E])
-X_E, X_V, X_P = (tfidf.transform(datos["texto"].iloc[tramo]) for tramo in (E, V, P))
+tfidf = vectorizador()
+X_E = tfidf.fit_transform(datos["texto"].iloc[E])            # el vocabulario se aprende solo aquí
+X_V, X_P = (tfidf.transform(datos["texto"].iloc[tramo]) for tramo in (V, P))
 terminos = np.array(tfidf.get_feature_names_out())
 print(f"Tiempo: {time.time() - inicio:.0f} s")
 print(f"Matriz de entrenamiento: {X_E.shape[0]} reseñas por {X_E.shape[1]} términos")
@@ -261,35 +268,55 @@ Comparen la primera fila con su segunda apuesta. El modelo que no hace nada acie
 
 La regla de palabras clave ya es un rival serio: encuentra una parte de las quejas con una lista de doce palabras.
 
-### 3.2 Cinco modelos sobre la misma matriz
+### 3.2 El catálogo de modelos
+
+La celda siguiente es el catálogo de candidatos. Es un diccionario, `MODELOS`, con una línea por modelo. Todos trabajan sobre la misma matriz TF-IDF, y el vectorizador no cambia.
+
+- El texto entre comillas es el **nombre** con el que el modelo aparece en las tablas y en las gráficas.
+- Lo que sigue es el **clasificador**. Cuando necesita una preparación propia, `make_pipeline(...)` la encadena delante. Aquí la usan los dos modelos que primero reducen la matriz a pocas dimensiones.
+- Para **agregar un modelo** escriban una línea nueva con otro nombre, importen su clase de scikit-learn al comienzo de la celda y corran el cuaderno desde ahí. Las celdas que siguen recorren lo que haya en el diccionario y no hay que tocarlas.
 
 | Modelo | Idea en una línea |
 |---|---|
-| Bayes ingenuo | Supone que las palabras aparecen de forma independiente dada la clase: $P(y\mid d)\propto P(y)\prod_t P(t\mid y)^{w_{t,d}}$ |
-| Regresión logística | $P(y=1\mid d)=\sigma(\beta_0+\sum_t\beta_t\,w_{t,d})$: un coeficiente por término |
-| Máquina de soporte vectorial lineal | Busca el plano que separa las clases con el mayor margen |
+| Bayes ingenuo, en tres versiones | Supone que las palabras aparecen de forma independiente dada la clase: $P(y\mid d)\propto P(y)\prod_t P(t\mid y)^{w_{t,d}}$. La versión complementaria estima cada clase con los documentos de la otra, y la de Bernoulli solo mira si la palabra aparece |
+| Regresión logística, con dos castigos | $P(y=1\mid d)=\sigma(\beta_0+\sum_t\beta_t\,w_{t,d})$: un coeficiente por término |
+| Máquina de soporte vectorial lineal, con dos castigos | Busca el plano que separa las clases con el mayor margen |
 | Regresión *ridge* | Mínimos cuadrados sobre la etiqueta 0 o 1, con castigo $\alpha\lVert\beta\rVert_2^2$ |
-| LSA + *boosting* | Reduce la matriz a 100 dimensiones con una descomposición en valores singulares y entrena árboles encima |
+| Descenso estocástico, con dos pérdidas | Un modelo lineal que se ajusta reseña por reseña, con la pérdida logística o con la de Huber |
+| LSA + *boosting* | Reduce la matriz a 50 dimensiones con una descomposición en valores singulares y entrena árboles encima |
+| LSA + análisis discriminante lineal | La misma reducción, y encima una normal por clase con la misma covarianza |
 
-Los cuatro primeros son lineales y trabajan sobre la matriz dispersa completa. El quinto es la alternativa no lineal. Como las quejas son pocas, a los modelos que lo permiten les pido que pesen las dos clases por igual.
+Los diez primeros son lineales y trabajan sobre la matriz dispersa completa. Los dos últimos son la alternativa que pasa por una reducción de dimensiones. Como las quejas son pocas, a los modelos que lo permiten les pido que pesen las dos clases por igual.
+
+**Ejercicio.** Agreguen al menos tres modelos más de scikit-learn y vuelvan a correr. Tengan presente que la matriz es dispersa y muy ancha, así que un modelo que no acepte matrices dispersas necesita la reducción delante. No le cambien el nombre a `"logística"`, porque más abajo la uso por ese nombre.
 '''),
 ("code", r'''
 from sklearn.decomposition import TruncatedSVD
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import HistGradientBoostingClassifier
-from sklearn.linear_model import LogisticRegression, RidgeClassifier
-from sklearn.naive_bayes import ComplementNB
+from sklearn.linear_model import LogisticRegression, RidgeClassifier, SGDClassifier
+from sklearn.naive_bayes import BernoulliNB, ComplementNB, MultinomialNB
 from sklearn.pipeline import make_pipeline
 from sklearn.svm import LinearSVC
 
-def cinco_modelos():
-    return {
-        "Bayes ingenuo": ComplementNB(alpha=0.3),
-        "logística": LogisticRegression(C=5, max_iter=2000, class_weight="balanced"),
-        "SVM lineal": LinearSVC(C=0.3, class_weight="balanced"),
-        "ridge": RidgeClassifier(alpha=3.0, class_weight="balanced"),
-        "LSA + boosting": make_pipeline(TruncatedSVD(n_components=100, random_state=SEMILLA),
-                                        HistGradientBoostingClassifier(max_iter=150, class_weight="balanced", random_state=SEMILLA)),
-    }
+MODELOS = {
+    "Bayes ingenuo": ComplementNB(alpha=0.3),
+    "Bayes multinomial": MultinomialNB(alpha=0.1),
+    "Bayes de Bernoulli": BernoulliNB(alpha=0.1),
+    "logística": LogisticRegression(C=5, max_iter=2000, class_weight="balanced"),
+    "logística, castigo fuerte": LogisticRegression(C=0.5, max_iter=2000, class_weight="balanced"),
+    "SVM lineal": LinearSVC(C=0.3, class_weight="balanced"),
+    "SVM lineal, castigo fuerte": LinearSVC(C=0.03, class_weight="balanced"),
+    "ridge": RidgeClassifier(alpha=3.0, class_weight="balanced"),
+    "descenso estocástico": SGDClassifier(loss="log_loss", alpha=1e-6, class_weight="balanced", random_state=SEMILLA),
+    "descenso estocástico, Huber": SGDClassifier(loss="modified_huber", alpha=1e-5, class_weight="balanced", random_state=SEMILLA),
+    "LSA + boosting": make_pipeline(TruncatedSVD(n_components=50, random_state=SEMILLA), HistGradientBoostingClassifier(max_iter=60, class_weight="balanced", random_state=SEMILLA)),
+    "LSA + discriminante lineal": make_pipeline(TruncatedSVD(n_components=50, random_state=SEMILLA), LinearDiscriminantAnalysis()),
+}
+print(len(MODELOS), "modelos en el catálogo:", ", ".join(MODELOS))
+'''),
+("code", r'''
+from sklearn.base import clone
 
 def puntaje(modelo, matriz):
     """Puntaje continuo: mientras más alto, más parece una queja."""
@@ -298,22 +325,23 @@ def puntaje(modelo, matriz):
     return modelo.predict_proba(matriz)[:, 1]
 
 entrenados, curvas = {}, {}
-for nombre, modelo in cinco_modelos().items():
+for nombre, receta in MODELOS.items():
     inicio = time.time()
-    entrenados[nombre] = modelo.fit(X_E, y[E])
+    modelo = clone(receta).fit(X_E, y[E])                # clone saca una copia sin entrenar y deja intacto el catálogo
+    entrenados[nombre] = modelo
     resultados[nombre] = cifras(y[V], modelo.predict(X_V), puntaje(modelo, X_V))
     resultados[nombre]["segundos"] = time.time() - inicio
     curvas[nombre] = precision_recall_curve(y[V], puntaje(modelo, X_V))
 comparacion = pd.DataFrame(resultados).T
 
-fig, (izq, der) = plt.subplots(1, 2, figsize=(14, 4.5))
+fig, (izq, der) = plt.subplots(1, 2, figsize=(14, 5.5))
 comparacion["AP"].sort_values().plot.barh(ax=izq, color="#1D4E89"); izq.axvline(y[V].mean(), color="gray", ls=":")
 izq.set(title="Precisión promedio en validación (punteada: ordenar al azar)", xlabel="AP")
-for nombre, (precision, sensibilidad, _) in curvas.items():
-    der.plot(sensibilidad, precision, label=f"{nombre} ({comparacion.loc[nombre, 'AP']:.3f})")
+for i, (nombre, (precision, sensibilidad, _)) in enumerate(curvas.items()):
+    der.plot(sensibilidad, precision, ls="-" if i < len(PALETA) else "--", label=f"{nombre} ({comparacion.loc[nombre, 'AP']:.3f})")
 regla = resultados["regla de palabras clave"]
 der.scatter(regla["sensibilidad"], regla["precisión"], color="black", zorder=5, label="regla de palabras clave")
-der.set(title="Precisión contra sensibilidad, validación", xlabel="sensibilidad", ylabel="precisión"); der.legend(fontsize=8)
+der.set(title="Precisión contra sensibilidad, validación", xlabel="sensibilidad", ylabel="precisión"); der.legend(fontsize=7)
 plt.tight_layout(); plt.show()
 display(comparacion.sort_values("AP", ascending=False).round(3))
 '''),
@@ -324,7 +352,7 @@ Los modelos lineales quedan juntos arriba, y la alternativa no lineal, con más 
 
 ### 3.3 La segunda trampa, medida: las copias
 
-En la limpieza quité las reseñas repetidas. ¿Cuánto habría cambiado el resultado si las dejo? Repito la partición y el entrenamiento con la tabla que conserva las copias y comparo con la tabla limpia. Son cuatro sorteos, y uso la máquina de soporte vectorial lineal porque es la más rápida.
+En la limpieza quité las reseñas repetidas. ¿Cuánto habría cambiado el resultado si las dejo? Repito la partición y el entrenamiento con la tabla que conserva las copias y comparo con la tabla limpia. Son tres sorteos, y uso la máquina de soporte vectorial lineal porque es de las más rápidas. La celda tarda cerca de tres minutos, porque en cada sorteo hay que volver a aprender el vocabulario.
 '''),
 ("code", r'''
 def examen_al_azar(tabla, semilla):
@@ -332,14 +360,14 @@ def examen_al_azar(tabla, semilla):
     textos = (tabla["Title"].fillna("") + ". " + tabla["Review"].fillna("")).to_numpy()
     etiquetas = (tabla["estrellas"] <= UMBRAL_QUEJA).astype(int).to_numpy()
     entren, prueba = train_test_split(np.arange(len(tabla)), test_size=0.20, random_state=semilla, stratify=etiquetas)
-    vec = vectorizador().fit(textos[entren])
-    modelo = LinearSVC(C=0.3, class_weight="balanced").fit(vec.transform(textos[entren]), etiquetas[entren])
+    vec = vectorizador()
+    modelo = LinearSVC(C=0.3, class_weight="balanced").fit(vec.fit_transform(textos[entren]), etiquetas[entren])
     ap = average_precision_score(etiquetas[prueba], modelo.decision_function(vec.transform(textos[prueba])))
-    return ap, np.isin(textos[prueba], textos[entren]).mean()
+    return ap, pd.Series(textos[prueba]).isin(textos[entren]).mean()
 
 inicio = time.time()
 filas = []
-for semilla in range(4):
+for semilla in range(3):
     ap_limpia, vistas_limpia = examen_al_azar(datos, semilla)
     ap_copias, vistas_copias = examen_al_azar(con_copias, semilla)
     filas.append({"AP, tabla limpia": ap_limpia, "AP, con copias": ap_copias,
@@ -349,12 +377,12 @@ print(f"Tiempo: {time.time() - inicio:.0f} s")
 display(copias.agg(["mean", "std"]).T.round(4))
 '''),
 ("md", r'''
-Lean la tabla con honestidad. Con copias, una parte pequeña de la prueba ya estaba en el entrenamiento. Comparen la diferencia entre las dos AP con la desviación entre sorteos: si la diferencia es del tamaño del ruido, en **este** conjunto la fuga por copias es pequeña, porque las copias son pocas. La limpieza sigue siendo correcta, y el tamaño del daño depende del dato. En el gemelo van a medir lo mismo en un texto donde una de cada cuatro filas repite a otra, y el número va a ser otro.
+Lean la tabla con honestidad. Con copias, una parte pequeña de la prueba ya estaba en el entrenamiento. Comparen la diferencia entre las dos AP con la desviación entre sorteos. Si la diferencia supera al ruido, las copias inflaron el resultado, aunque sean pocas. Si queda dentro del ruido, en **este** conjunto la fuga por copias no se alcanza a medir. En los dos casos la limpieza es correcta, y el tamaño del daño depende del dato. En el gemelo van a medir lo mismo en un texto donde una de cada cuatro filas repite a otra, y el número va a ser otro.
 
 ### 3.4 El veredicto
 '''),
 ("code", r'''
-mejor = comparacion.loc[list(cinco_modelos()), "AP"].idxmax()
+mejor = comparacion.loc[list(MODELOS), "AP"].idxmax()
 ganador = entrenados[mejor]
 en_prueba = cifras(y[P], ganador.predict(X_P), puntaje(ganador, X_P))
 print(f"Ganador en validación: {mejor}")
@@ -362,6 +390,29 @@ print(f"En la prueba: AP {en_prueba['AP']:.3f} | precisión {en_prueba['precisi�
 print(f"Regla de palabras clave en la prueba: precisión {precision_score(y[P], cuenta_negativas[P] > 0):.3f} | sensibilidad {recall_score(y[P], cuenta_negativas[P] > 0):.3f}")
 '''),
 ("md", r'''
+El ganador salió de una lista larga. La gráfica siguiente pone cada modelo del catálogo según su puesto en validación y su puesto en prueba, los dos medidos con la precisión promedio. Si el orden de validación fuera una propiedad firme de los modelos, los puntos caerían sobre la diagonal.
+'''),
+("code", r'''
+del_catalogo = pd.DataFrame({"validación": comparacion.loc[list(MODELOS), "AP"],
+                             "prueba": {nombre: average_precision_score(y[P], puntaje(entrenados[nombre], X_P)) for nombre in MODELOS}})
+puestos = del_catalogo.rank(ascending=False, method="first").astype(int)        # el puesto 1 es la mejor AP
+
+fig, eje = plt.subplots(figsize=(5, 5), facecolor="#FBFAF7")
+eje.set_facecolor("#FBFAF7")
+eje.plot([1, len(puestos)], [1, len(puestos)], color="#9AA5B1", ls=":")
+eje.scatter(puestos.iloc[:, 0], puestos.iloc[:, 1], s=45, zorder=3, color=["#D7263D" if nombre == mejor else "#1D4E89" for nombre in puestos.index])
+for nombre, fila in puestos.iterrows():
+    eje.annotate(nombre, (fila.iloc[0], fila.iloc[1]), xytext=(6, 4), textcoords="offset points", fontsize=7)
+eje.set(title="¿El orden de validación se repite en la prueba?", xlabel="puesto en validación (1 es el mejor)", ylabel="puesto en prueba",
+        xticks=range(1, len(puestos) + 1), yticks=range(1, len(puestos) + 1))
+plt.show()
+display(del_catalogo.sort_values("validación", ascending=False).round(3))
+'''),
+("md", r'''
+El punto rojo es el ganador. Miren cuánto se alejan los puntos de la diagonal y cuánta ventaja le sacó el primero al segundo en validación. Cuando varios candidatos quedan a pocas milésimas, el orden entre ellos depende de cuáles reseñas cayeron en la validación.
+
+**Pregunta.** Con tantos candidatos, ¿cuánto del ganador es azar? Respondan con los puestos de la gráfica y con la ventaja del primero sobre el segundo. **Mi respuesta:**
+
 ### 3.5 Explicar: los coeficientes se leen
 
 Aquí el texto tiene una ventaja sobre las imágenes de la semana pasada: cada columna es una palabra. En la regresión logística, el coeficiente $\beta_t$ dice cuánto sube el logaritmo de la razón de probabilidades cuando el peso del término $t$ aumenta en una unidad,
@@ -499,7 +550,6 @@ Para la mesa de turismo, que no sabe qué es TF-IDF.
 | Decisión | Alternativa descartada | Por qué |
 |---|---|---|
 | Diccionario de `Country`, `Type` y `Polarity` deducido del contenido | Esperar un diccionario oficial | La copia no lo publica; la evidencia de las tres tablas es consistente |
-| Muestra de 20.000 reseñas por país | Las 251.291 | Corre en minutos sin GPU y deja a los tres países con el mismo peso |
 | Quitar las reseñas `#ERROR!` y las repetidas | Dejarlas | Las primeras no tienen texto; las segundas pueden caer a los dos lados de la partición |
 | Queja es dos estrellas o menos | Tres o menos | Tres estrellas mezcla quejas con reseñas tibias; es el parámetro de la variante |
 | Título y texto juntos | Solo el texto | El título resume la opinión y también lo escribe el visitante |
@@ -533,10 +583,5 @@ Vuelvan a la celda del comienzo, cambien `UMBRAL_QUEJA = 2` por `UMBRAL_QUEJA = 
 | Error de clasificar y contar (puntos) | | |
 
 Con la tabla llena, respondan en tres líneas: ¿cambió la recomendación? ¿Qué definición de queja le propondrían a la mesa y por qué? **Mi respuesta:**
-
-### 4.6 Procedencia
-'''),
-("code", r'''
-procedencia()["restmex"]
 '''),
 ]

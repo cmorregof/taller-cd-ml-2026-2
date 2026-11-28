@@ -196,6 +196,7 @@ FICHAS = {
         "titulo": "EuroSAT RGB: parches de Sentinel-2 de 64 x 64 píxeles en diez clases de cobertura (400 por clase)",
         "fuente": "Helber, Bischke, Dengel y Borth (2019), copia de torchgeo en Hugging Face",
         "url": "https://huggingface.co/datasets/torchgeo/eurosat",
+        "documentacion": "https://arxiv.org/abs/1709.00029",   # el artículo de los autores
         "licencia": "MIT. Citar a los autores.",
         "constructor": construir_eurosat,
         "md5": "b28e0463b261f2226b82890db3764fdd",
@@ -204,6 +205,8 @@ FICHAS = {
         "titulo": "Caldas desde Sentinel-2: 1.600 parches de 640 m con referencia de ESA WorldCover 2021",
         "fuente": "Microsoft Planetary Computer: Sentinel-2 L2A (escena del 10 de agosto de 2026, tesela T18NVL) y ESA WorldCover 2021 v200",
         "url": "https://planetarycomputer.microsoft.com",
+        "documentacion": ["https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a",      # la página de cada colección
+                          "https://planetarycomputer.microsoft.com/dataset/esa-worldcover"],
         "licencia": "Sentinel-2: datos Copernicus, uso libre con cita. ESA WorldCover: CC BY 4.0.",
         "constructor": construir_caldas,
         "md5": None,   # hay una tabla por zona: el MD5 se registra y no se compara
@@ -212,6 +215,7 @@ FICHAS = {
         "titulo": "Orinoquía Camera Traps: ocho especies, una foto por secuencia",
         "fuente": "LILA BC, Orinoquía Camera Traps (Vélez et al., 2023)",
         "url": "https://lila.science/datasets/orinoquia-camera-traps/",
+        "documentacion": "https://doi.org/10.1111/2041-210X.14044",   # el artículo de Vélez y colaboradores
         "licencia": "Community Data License Agreement (variante permisiva). Citar a los autores.",
         "constructor": construir_orinoquia,
         "md5": "ca3e6adb7e07778e427bb1aa3ac55235",

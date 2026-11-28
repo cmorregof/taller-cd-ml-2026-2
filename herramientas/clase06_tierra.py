@@ -18,6 +18,13 @@ Hoy hay parcial, así que esta demostración dura hora y media. La resuelvo yo e
 | **Uso de IA** | Pueden pedirle a Claude que explique una celda o que escriba una gráfica. Deben poder explicar sin ayuda qué es un cambio de dominio, por qué la exactitud medida en Europa no vale en Caldas, cómo se detecta el cambio sin etiquetas y de dónde sale la referencia con la que se juzga al modelo en Caldas. |
 | **Entregable** | Este cuaderno corrido de principio a fin en su portafolio, con las predicciones escritas, la decisión en tres frases y la tabla de la variante llenas. |
 '''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** Hoy hay dos fuentes. Los parches europeos son [EuroSAT, en la copia que publica torchgeo en Hugging Face](https://huggingface.co/datasets/torchgeo/eurosat), y los autores lo describen en [su artículo](https://arxiv.org/abs/1709.00029). La imagen de Caldas y el mapa de referencia salen de [Microsoft Planetary Computer](https://planetarycomputer.microsoft.com), que tiene una página para [Sentinel-2 de nivel 2A](https://planetarycomputer.microsoft.com/dataset/sentinel-2-l2a) y otra para [ESA WorldCover](https://planetarycomputer.microsoft.com/dataset/esa-worldcover). Abran los enlaces y explórenlos cinco minutos antes de correr nada. Respondan mirando las fuentes:
+>
+> - ¿Quién opera los satélites Sentinel-2 y cada cuánto vuelven a pasar por el mismo lugar?
+> - ¿Qué es una fila de EuroSAT y cuántas clases tiene?
+> - ¿De qué año es el mapa WorldCover y con qué licencia se publica?
+'''),
 ("code", ARRANQUE),
 ("md", r'''
 La celda siguiente tiene el único parámetro del cuaderno. Al final lo cambian y comparan.
@@ -65,13 +72,11 @@ $$\text{exactitud balanceada}=\frac{1}{K}\sum_{k=1}^{K}\frac{\#\{i:\ \hat y_i=y_
 ("md", r'''
 ## 2. Datos
 
-Dos descargas. De EuroSAT se baja el archivo completo (94 MB) y se guardan 400 parches por clase, los numerados de 1 a 400. De Caldas se bajan desde Planetary Computer tres capas de una zona de 25,6 km de lado: el color verdadero de la imagen, la máscara de nubes de la propia escena y el mapa WorldCover. Entre las dos tardan menos de un minuto.
+Dos líneas traen los dos datos. De EuroSAT llegan 400 parches de cada clase y no los 27.000 del conjunto, porque cada parche tiene que pasar por la red neuronal y con el conjunto entero el cuaderno tardaría varias veces más. De Caldas llegan tres capas de una zona de 25,6 km de lado, que son el color verdadero de la imagen, la máscara de nubes de la propia escena y el mapa WorldCover. La celda tarda menos de un minuto.
 '''),
 ("code", r'''
-inicio = time.time()
 europa = descargar("eurosat")
 caldas = descargar("caldas", zona=ZONA)
-print(f"Tiempo: {time.time() - inicio:.0f} s")
 print("\nEuroSAT, parches por clase:"); print(europa["clase"].value_counts().to_string())
 caldas.head(3)
 '''),
@@ -212,15 +217,12 @@ Miren dónde cae Caldas respecto de las clases europeas. Todos los parches de Ca
 
 Parto EuroSAT al azar en 60 % para entrenar, 20 % para validar y 20 % para la prueba, con las clases en la misma proporción. Hay una reserva. La versión RGB de EuroSAT no dice de qué imagen ni de qué lugar salió cada parche, así que no puedo partir por lugar como hicimos la clase pasada con las lesiones. Si dos parches vecinos cayeron a lados distintos, la exactitud europea está algo inflada. No lo puedo medir con este archivo y lo dejo anotado.
 
-La línea base son seis números por parche, el promedio y la desviación de cada canal de color. Encima de las características compiten los mismos cinco clasificadores de la clase 5.
+La línea base son seis números por parche, el promedio y la desviación de cada canal de color. Encima de las características compite el catálogo de modelos de la clase 5.
 '''),
 ("code", r'''
-from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
-from sklearn.svm import SVC
 
 ye = europa["clase"].to_numpy()
 indices = np.arange(len(europa))
@@ -238,36 +240,89 @@ def seis_numeros(carpeta, archivos):
 color_e = seis_numeros(carpeta_e, europa["archivo"])
 base = make_pipeline(StandardScaler(), LogisticRegression(max_iter=2000)).fit(color_e[E], ye[E])
 
-def cinco_modelos():
-    return {
-        "logística": make_pipeline(StandardScaler(), LogisticRegression(C=0.01, max_iter=2000)),
-        "SVM": make_pipeline(StandardScaler(), SVC(C=1.0, kernel="rbf")),
-        "k vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=15)),
-        "bosque": RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=SEMILLA),
-        "boosting": make_pipeline(StandardScaler(), PCA(n_components=30, random_state=SEMILLA),
-                                  HistGradientBoostingClassifier(max_iter=60, random_state=SEMILLA)),
-    }
-
 def exactitud(real, predicho):
     return float(np.mean(np.asarray(real) == np.asarray(predicho)))
 
-inicio = time.time()
 resultados = {"color (6 números)": {"validación": exactitud(ye[V], base.predict(color_e[V])), "prueba": exactitud(ye[P], base.predict(color_e[P]))}}
+display(pd.DataFrame(resultados).T.round(3))
+'''),
+("md", r'''
+**El catálogo de modelos.** La celda siguiente es un diccionario, `MODELOS`, con una línea por candidato.
+
+- El texto entre comillas es el **nombre** con el que el modelo aparece en las tablas y en las gráficas.
+- `make_pipeline(...)` encadena la **preparación** (por ejemplo `StandardScaler()`, que estandariza cada columna) con el **clasificador**, que va al final. Así la preparación se ajusta solo con los datos de entrenamiento.
+- Para **agregar un modelo** escriban una línea nueva con otro nombre, importen su clase de scikit-learn al comienzo de la celda y corran el cuaderno desde ahí. Las celdas que siguen recorren lo que haya en el diccionario y no hay que tocarlas.
+
+Los candidatos son los de la clase 5: dos regresiones logísticas con distinto castigo, vecinos con dos valores de $k$, un árbol, dos promedios de árboles, *gradient boosting*, Bayes ingenuo, análisis discriminante lineal, una máquina de soporte vectorial y una red neuronal pequeña.
+
+**Ejercicio.** Agreguen al menos tres modelos más de scikit-learn y vuelvan a correr. No le cambien el nombre a `"logística"`, porque más abajo la uso por ese nombre.
+'''),
+("code", r'''
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+
+MODELOS = {
+    "logística": make_pipeline(StandardScaler(), LogisticRegression(C=0.01, max_iter=2000)),
+    "logística, castigo débil": make_pipeline(StandardScaler(), LogisticRegression(C=1.0, max_iter=2000)),
+    "5 vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=5)),
+    "15 vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=15)),
+    "árbol": DecisionTreeClassifier(max_depth=8, min_samples_leaf=10, random_state=SEMILLA),
+    "bosque": RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=SEMILLA),
+    "ExtraTrees": ExtraTreesClassifier(n_estimators=200, n_jobs=-1, random_state=SEMILLA),
+    "boosting": make_pipeline(StandardScaler(), PCA(n_components=30, random_state=SEMILLA), HistGradientBoostingClassifier(max_iter=60, random_state=SEMILLA)),
+    "Bayes ingenuo": make_pipeline(StandardScaler(), PCA(n_components=30, random_state=SEMILLA), GaussianNB()),
+    "discriminante lineal": make_pipeline(StandardScaler(), LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto")),
+    "SVM": make_pipeline(StandardScaler(), SVC(C=1.0, kernel="rbf")),
+    "red pequeña": make_pipeline(StandardScaler(), MLPClassifier(hidden_layer_sizes=(64,), alpha=1.0, max_iter=500, random_state=SEMILLA)),
+}
+print(len(MODELOS), "modelos en el catálogo:", ", ".join(MODELOS))
+'''),
+("code", r'''
+from sklearn.base import clone
+
+inicio = time.time()
 entrenados = {}
-for nombre, modelo in cinco_modelos().items():
-    entrenados[nombre] = modelo.fit(Xe[E], ye[E])
+for nombre, candidato in MODELOS.items():
+    modelo = clone(candidato).fit(Xe[E], ye[E])          # clone saca una copia sin entrenar y deja intacto el catálogo
+    entrenados[nombre] = modelo
     resultados[nombre] = {"validación": exactitud(ye[V], modelo.predict(Xe[V])), "prueba": exactitud(ye[P], modelo.predict(Xe[P]))}
 comparacion = pd.DataFrame(resultados).T
 print(f"Tiempo: {time.time() - inicio:.0f} s")
 
-comparacion.sort_values("validación").plot.barh(color=["#1D4E89", "#1B998B"], figsize=(8, 3.6))
+comparacion.sort_values("validación").plot.barh(color=["#1D4E89", "#1B998B"], figsize=(8, 5))
 plt.xlabel("exactitud en diez clases"); plt.title("Europa: validación para escoger, prueba para reportar"); plt.show()
-mejor = comparacion.loc[list(cinco_modelos()), "validación"].idxmax()
+del_catalogo = comparacion.loc[list(MODELOS)]
+mejor = del_catalogo["validación"].idxmax()
 ganador = entrenados[mejor]
 display(comparacion.sort_values("validación", ascending=False).round(3))
 print(f"Ganador en validación: {mejor} | exactitud en la prueba europea: {comparacion.loc[mejor, 'prueba']:.3f}")
 '''),
 ("md", r'''
+El ganador salió de una lista larga. La gráfica siguiente pone cada modelo del catálogo según su puesto en validación y su puesto en prueba. Si el orden de validación fuera una propiedad firme de los modelos, los puntos caerían sobre la diagonal.
+'''),
+("code", r'''
+puestos = del_catalogo.rank(ascending=False, method="first").astype(int)        # el puesto 1 es el mejor
+fig, eje = plt.subplots(figsize=(5, 5), facecolor="#FBFAF7")
+eje.set_facecolor("#FBFAF7")
+eje.plot([1, len(puestos)], [1, len(puestos)], color="#9AA5B1", ls=":")
+eje.scatter(puestos.iloc[:, 0], puestos.iloc[:, 1], s=45, zorder=3, color=["#D7263D" if nombre == mejor else "#1D4E89" for nombre in puestos.index])
+for nombre, fila in puestos.iterrows():
+    eje.annotate(nombre, (fila.iloc[0], fila.iloc[1]), xytext=(6, 4), textcoords="offset points", fontsize=7)
+eje.set(title="¿El orden de validación se repite en la prueba?", xlabel="puesto en validación (1 es el mejor)", ylabel="puesto en prueba",
+        xticks=range(1, len(puestos) + 1), yticks=range(1, len(puestos) + 1))
+plt.show()
+print(f"Exactitud en validación del primero y del segundo: {del_catalogo['validación'].nlargest(2).round(3).tolist()}")
+'''),
+("md", r'''
+El punto rojo es el ganador. Miren cuánto se alejan los puntos de la diagonal y cuánta ventaja le sacó el primero al segundo en validación. Cuando varios candidatos quedan a pocas milésimas, el orden entre ellos depende de cuáles parches cayeron en la validación.
+
+**Pregunta.** Con tantos candidatos, ¿cuánto del ganador es azar? Respondan con los puestos de la gráfica y con la ventaja del primero sobre el segundo. **Mi respuesta:**
+
 En casa el modelo funciona, y le saca mucha ventaja a la línea base de color. Con este número en la mano, cualquiera firmaría el contrato con la oficina de planeación.
 
 ### 3.2 El examen afuera
@@ -316,7 +371,7 @@ print("Acierto por cobertura de referencia:")
 print(pd.Series(pred_ref[p] == ref[p]).groupby(ref[p]).agg(["mean", "size"]).rename(columns={"mean": "acierto", "size": "parches"}).round(3).to_string())
 '''),
 ("md", r'''
-Comparen con su segunda apuesta. El mismo modelo, con los mismos pesos, pasa de acertar nueve de cada diez parches a acertar cerca de uno de cada siete. Miren la tabla cruzada de la zona cafetera para ver cómo falla: a la mayor parte de lo que la referencia llama arbolado, el modelo le responde `HerbaceousVegetation` o `Residential`. Acierta en lo construido, que se parece en todas partes, y acierta en buena parte del pastizal porque vegetación baja es lo que responde para casi todo.
+Comparen con su segunda apuesta. El mismo modelo, con los mismos pesos, pasa de acertar nueve de cada diez parches a acertar menos de uno de cada cinco. Miren la tabla cruzada de la zona cafetera para ver cómo falla: a la mayor parte de lo que la referencia llama arbolado, el modelo le responde `HerbaceousVegetation` o `Residential`. Acierta en lo construido, que se parece en todas partes, y acierta en buena parte del pastizal porque vegetación baja es lo que responde para casi todo.
 
 Fíjense también en la diferencia entre las dos métricas. La exactitud balanceada de Caldas sale mucho mejor que la exactitud simple, porque dos de las tres coberturas salen bien y pesan lo mismo que la tercera, que es casi toda la zona. Ninguna de las dos métricas miente. Responden preguntas distintas, y a la oficina le importa el mapa completo.
 
@@ -533,10 +588,5 @@ Vuelvan a la celda del comienzo donde dice `ZONA = "cafetera"`, pongan `ZONA = "
 | Exactitud balanceada con solo parches locales | | |
 
 Con la tabla llena, respondan en tres líneas: ¿la receta que sirvió en la zona cafetera sirve en el páramo? ¿Qué le dice eso a la oficina sobre un solo modelo para todo Caldas? **Mi respuesta:**
-
-### 4.5 Procedencia
-'''),
-("code", r'''
-{nombre: ficha for nombre, ficha in procedencia().items() if nombre in ("eurosat", "caldas")}
 '''),
 ]

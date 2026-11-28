@@ -149,6 +149,7 @@ FICHAS = {
         "titulo": "Bogotá: siniestros viales, 2015 a 2024",
         "fuente": "Secretaría Distrital de Movilidad de Bogotá, Base del Anuario de Siniestralidad 2024, hoja Siniestros",
         "url": ANUARIO,
+        "pagina": "https://observatorio.movilidadbogota.gov.co/publicaciones/anuarios",   # donde la Secretaría publica cada anuario y su base
         "licencia": "Datos abiertos de la Secretaría Distrital de Movilidad. Citar la fuente.",
         "constructor": construir_siniestros,
         "md5": None,

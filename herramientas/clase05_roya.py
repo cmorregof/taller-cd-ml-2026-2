@@ -16,13 +16,20 @@ Este cuaderno lo resuelve cada uno, de forma individual, en la segunda mitad de 
 
 | Ficha | |
 |---|---|
-| **Objetivo pedagógico** | Repetir por cuenta propia el camino de la clase con fotos de hojas de café: extraer características con una red preentrenada, comparar cinco clasificadores contra una línea base, medir si partir al azar infla el resultado y convertir una probabilidad en una decisión con costos. |
+| **Objetivo pedagógico** | Repetir por cuenta propia el camino de la clase con fotos de hojas de café: extraer características con una red preentrenada, comparar un catálogo de clasificadores contra una línea base, medir si partir al azar infla el resultado y convertir una probabilidad en una decisión con costos. |
 | **Enfoque** | Machine Learning. |
 | **Resultados de aprendizaje** | 1 (formular), 2 (seleccionar y preparar datos), 3 (flujo reproducible), 4 (implementar y evaluar), 5 (comunicar) y 6 (reflexión ética, técnica y operativa). |
 | **Uso de IA** | Desde esta clase el código lo escribe Claude y ustedes lo auditan. Pídanle el código de cada celda, léanlo y córranlo. Deben poder explicar sin ayuda por qué se parte por planta, qué midieron al comparar las particiones, de dónde sale el umbral y qué significa cada cifra que reportan. |
 | **Entregable** | El cuaderno completo y corrido en su portafolio de GitHub, con las predicciones escritas, las respuestas a las preguntas, la sección de auditoría, la decisión en tres frases y la tabla de la variante llenas. |
 
 **Cómo se trabaja.** Cada celda de código trae solo un comentario que dice qué debe lograr. Ustedes le piden el código a Claude, celda por celda o por secciones. Antes de pedirlo, péguenle el bloque «Lo que Claude necesita saber», porque Claude no conoce las funciones de este curso. Después de cada celda respondan la pregunta que la acompaña con sus propias palabras. Un cuaderno con código perfecto y preguntas sin responder no cumple el entregable.
+'''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** Las fotos de hoy salen de [RoCoLe en Mendeley Data](https://data.mendeley.com/datasets/c5yvn32dzg/2). Los autores cuentan cómo las tomaron y cómo las etiquetaron en [su artículo de *Data in Brief*](https://doi.org/10.1016/j.dib.2019.104414). Abran los dos enlaces y explórenlos cinco minutos antes de pedirle código a Claude. Respondan mirando la fuente:
+>
+> - ¿Quién publica el conjunto y en qué versión va?
+> - ¿Qué archivos trae además de las fotos, y cuál de ellos tiene las etiquetas?
+> - ¿Qué licencia tiene y qué les exige a quienes lo usan?
 '''),
 ("code", ARRANQUE),
 ("code", r'''
@@ -45,7 +52,7 @@ Copien este bloque al comienzo de su conversación con Claude.
 >
 > `rasgos_guardados(nombre, filas)` devuelve una matriz de numpy ya calculada o `None`, y `guardar_rasgos(nombre, matriz)` la guarda. Sirven para no repetir la extracción de características.
 >
-> Quiero usar ResNet18 de torchvision, preentrenada en ImageNet, como extractor fijo de características (sin entrenar la red), y encima modelos de scikit-learn. Todo debe correr en CPU en pocos minutos. Escribe código corto, con comentarios en español, y no uses datos que no sean los de la tabla.
+> Quiero usar ResNet18 de torchvision, preentrenada en ImageNet, como extractor fijo de características (sin entrenar la red), y encima modelos de scikit-learn. Los candidatos están en un diccionario `MODELOS` que el cuaderno define en una celda propia, con el nombre de cada modelo como clave y un estimador de scikit-learn sin entrenar como valor. El código debe recorrer ese diccionario con `clone` y no nombrar modelos sueltos, salvo `MODELOS["logística"]` cuando una tarea la pida. Todo debe correr en CPU en pocos minutos. Escribe código corto, con comentarios en español, y no uses datos que no sean los de la tabla.
 '''),
 ("md", r'''
 ## 1. Formulación
@@ -89,15 +96,13 @@ Antes de correr nada:
 
 ### 2.1 Descargar y mirar
 
-La descarga trae las 1.560 fotos una por una desde Mendeley Data y las reduce. Tarda cerca de tres minutos.
+La primera vez la descarga tarda cerca de tres minutos.
 '''),
 ("tarea", r'''
-# TAREA 1. Descarguen la tabla con descargar("rocole"), midan el tiempo y muestren cuántas fotos y
-# cuántas plantas hay, y las primeras filas.
+# TAREA 1. Descarguen la tabla con descargar("rocole") y muestren cuántas fotos y cuántas plantas hay,
+# y las primeras filas.
 ''', r'''
-inicio = time.time()
 tabla = descargar("rocole")
-print(f"Tiempo: {time.time() - inicio:.0f} s")
 print(len(tabla), "fotos |", tabla["planta"].nunique(), "plantas")
 tabla.head()
 '''),
@@ -298,27 +303,51 @@ resultados = {"color (6 números)": {"validación": roc_auc_score(y[V], base.pre
 display(pd.DataFrame(resultados).T.round(3))
 '''),
 ("md", r'''
-### 3.3 Cinco clasificadores
+### 3.3 El catálogo de modelos
 
-Los mismos cinco de la demostración, sobre las 512 características: regresión logística con castigo fuerte, máquina de soporte vectorial con núcleo gaussiano $K(z,z')=\exp(-\gamma\lVert z-z'\rVert^2)$, $k$ vecinos, bosque aleatorio y *gradient boosting* sobre 50 componentes principales.
+La celda siguiente es el catálogo de candidatos, el mismo de la demostración. Es un diccionario, `MODELOS`, con una línea por modelo. Esta celda ya viene escrita.
+
+- El texto entre comillas es el **nombre** con el que el modelo aparece en las tablas y en las gráficas.
+- `make_pipeline(...)` encadena la **preparación** (por ejemplo `StandardScaler()`, que estandariza cada columna) con el **clasificador**, que va al final. Así la preparación se ajusta solo con las fotos de entrenamiento.
+- Para **agregar un modelo** escriban una línea nueva con otro nombre, importen su clase de scikit-learn al comienzo de la celda y corran el cuaderno desde ahí. Las tareas que siguen deben recorrer lo que haya en el diccionario, sin nombrar modelos sueltos.
+
+**Ejercicio.** Agreguen al menos tres modelos más de scikit-learn y vuelvan a correr. Pueden cambiar hiperparámetros de un modelo que ya esté o traer una clase nueva. No le cambien el nombre a `"logística"`, porque varias tareas la piden por ese nombre.
+'''),
+("code", r'''
+from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+
+MODELOS = {
+    "logística": make_pipeline(StandardScaler(), LogisticRegression(C=0.01, max_iter=2000)),
+    "logística, castigo débil": make_pipeline(StandardScaler(), LogisticRegression(C=1.0, max_iter=2000)),
+    "5 vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=5)),
+    "15 vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=15)),
+    "árbol": DecisionTreeClassifier(max_depth=5, min_samples_leaf=20, random_state=SEMILLA),
+    "bosque": RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=SEMILLA),
+    "ExtraTrees": ExtraTreesClassifier(n_estimators=200, n_jobs=-1, random_state=SEMILLA),
+    "boosting": make_pipeline(StandardScaler(), PCA(n_components=50, random_state=SEMILLA), HistGradientBoostingClassifier(random_state=SEMILLA)),
+    "Bayes ingenuo": make_pipeline(StandardScaler(), PCA(n_components=50, random_state=SEMILLA), GaussianNB()),
+    "discriminante lineal": make_pipeline(StandardScaler(), LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto")),
+    "SVM": make_pipeline(StandardScaler(), SVC(C=1.0, kernel="rbf")),
+    "red pequeña": make_pipeline(StandardScaler(), MLPClassifier(hidden_layer_sizes=(64,), alpha=1.0, max_iter=500, random_state=SEMILLA)),
+}
+print(len(MODELOS), "modelos en el catálogo:", ", ".join(MODELOS))
 '''),
 ("tarea", r'''
-# TAREA 10. Definan los cinco modelos, entrénenlos en E y midan su AUC en validación y en prueba. Muestren
-# una tabla ordenada por validación (con la línea base), una gráfica de barras y las curvas ROC en validación.
+# TAREA 10. Recorran el diccionario MODELOS: entrenen en E una copia de cada modelo (clone) y midan su AUC en
+# validación y en prueba. Muestren una tabla ordenada por validación (con la línea base), una gráfica de
+# barras y las curvas ROC en validación. El código no debe nombrar ningún modelo.
 ''', r'''
-from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
-
-def cinco_modelos():
-    return {
-        "logística": make_pipeline(StandardScaler(), LogisticRegression(C=0.01, max_iter=2000)),
-        "SVM": make_pipeline(StandardScaler(), SVC(C=1.0, kernel="rbf")),
-        "k vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=15)),
-        "bosque": RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=SEMILLA),
-        "boosting": make_pipeline(StandardScaler(), PCA(n_components=50, random_state=SEMILLA),
-                                  HistGradientBoostingClassifier(random_state=SEMILLA)),
-    }
+from sklearn.base import clone
 
 def puntaje(modelo, entradas):
     if hasattr(modelo, "predict_proba"):
@@ -327,21 +356,22 @@ def puntaje(modelo, entradas):
 
 inicio = time.time()
 entrenados, curvas = {}, {}
-for nombre, modelo in cinco_modelos().items():
-    entrenados[nombre] = modelo.fit(X[E], y[E])
+for nombre, receta in MODELOS.items():
+    modelo = clone(receta).fit(X[E], y[E])
+    entrenados[nombre] = modelo
     resultados[nombre] = {"validación": roc_auc_score(y[V], puntaje(modelo, X[V])),
                           "prueba": roc_auc_score(y[P], puntaje(modelo, X[P]))}
     curvas[nombre] = roc_curve(y[V], puntaje(modelo, X[V]))
 comparacion = pd.DataFrame(resultados).T
 print(f"Tiempo: {time.time() - inicio:.0f} s")
 
-fig, (izq, der) = plt.subplots(1, 2, figsize=(13, 4.5))
+fig, (izq, der) = plt.subplots(1, 2, figsize=(14, 5.5))
 comparacion.sort_values("validación").plot.barh(ax=izq, color=["#1D4E89", "#1B998B"])
 izq.set(title="AUC: validación para escoger, prueba para reportar", xlabel="AUC", xlim=(0.45, 1))
-for nombre, (fp, vp, _) in curvas.items():
-    der.plot(fp, vp, label=f"{nombre} ({comparacion.loc[nombre, 'validación']:.3f})")
+for i, (nombre, (fp, vp, _)) in enumerate(curvas.items()):
+    der.plot(fp, vp, ls="-" if i < len(PALETA) else "--", label=f"{nombre} ({comparacion.loc[nombre, 'validación']:.3f})")
 der.plot([0, 1], [0, 1], color="gray", ls=":")
-der.set(title="Curvas ROC en validación", xlabel="1 − especificidad", ylabel="sensibilidad"); der.legend(fontsize=8)
+der.set(title="Curvas ROC en validación", xlabel="1 − especificidad", ylabel="sensibilidad"); der.legend(fontsize=7)
 plt.tight_layout(); plt.show()
 display(comparacion.sort_values("validación", ascending=False).round(3))
 '''),
@@ -349,7 +379,7 @@ display(comparacion.sort_values("validación", ascending=False).round(3))
 **Preguntas.**
 
 - ¿Cuánto le gana la red a los seis números de color? Compárenlo con lo que pasó en *Lunares* entre la foto y la planilla. **Mi respuesta:**
-- ¿Cuánto se diferencian los cinco modelos entre sí? **Mi respuesta:**
+- ¿Cuánto se diferencian entre sí los modelos del catálogo? **Mi respuesta:**
 
 ### 3.4 La trampa: ¿cuánto infla partir al azar?
 
@@ -372,7 +402,7 @@ for semilla in range(30):
     fila = {}
     for nombre in ["al azar", "por planta", "por C"]:
         entren, prueba = particiones[nombre]
-        logistica = cinco_modelos()["logística"].fit(X[entren], y[entren])
+        logistica = clone(MODELOS["logística"]).fit(X[entren], y[entren])
         fila[f"logística (AUC), {nombre}"] = roc_auc_score(y[prueba], puntaje(logistica, X[prueba]))
         un_vecino = make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=1)).fit(X[entren], y[entren])
         fila[f"1 vecino (exactitud), {nombre}"] = (un_vecino.predict(X[prueba]) == y[prueba]).mean()
@@ -399,15 +429,31 @@ display(repeticiones.agg(["mean", "std"]).T.round(3))
 ### 3.5 El veredicto
 '''),
 ("tarea", r'''
-# TAREA 12. Escojan como ganador el modelo con mayor AUC en validación entre los cinco y reporten su AUC en
-# prueba junto al de la línea base de color.
+# TAREA 12. Escojan como ganador el modelo del catálogo con mayor AUC en validación y reporten su AUC en
+# prueba junto al de la línea base de color. Dibujen además una gráfica pequeña con el puesto de cada modelo
+# en validación (eje horizontal) contra su puesto en prueba (eje vertical), con la diagonal y el ganador en rojo.
 ''', r'''
-mejor = comparacion.loc[list(cinco_modelos()), "validación"].idxmax()
+del_catalogo = comparacion.loc[list(MODELOS)]
+mejor = del_catalogo["validación"].idxmax()
 ganador = entrenados[mejor]
 print(f"Ganador en validación: {mejor}")
 print(f"AUC en prueba: {comparacion.loc[mejor, 'prueba']:.3f} | color: {comparacion.loc['color (6 números)', 'prueba']:.3f}")
+
+puestos = del_catalogo.rank(ascending=False, method="first").astype(int)        # el puesto 1 es el mejor AUC
+fig, eje = plt.subplots(figsize=(5, 5), facecolor="#FBFAF7")
+eje.set_facecolor("#FBFAF7")
+eje.plot([1, len(puestos)], [1, len(puestos)], color="#9AA5B1", ls=":")
+eje.scatter(puestos["validación"], puestos["prueba"], s=45, zorder=3, color=["#D7263D" if nombre == mejor else "#1D4E89" for nombre in puestos.index])
+for nombre, fila in puestos.iterrows():
+    eje.annotate(nombre, (fila["validación"], fila["prueba"]), xytext=(6, 4), textcoords="offset points", fontsize=7)
+eje.set(title="¿El orden de validación se repite en la prueba?", xlabel="puesto en validación (1 es el mejor)", ylabel="puesto en prueba",
+        xticks=range(1, len(puestos) + 1), yticks=range(1, len(puestos) + 1))
+plt.show()
+print(f"AUC en validación del primero y del segundo: {del_catalogo['validación'].nlargest(2).round(3).tolist()}")
 '''),
 ("md", r'''
+**Pregunta.** El ganador salió de una lista larga. Miren cuánto se alejan los puntos de la diagonal y cuánta ventaja le sacó el primero al segundo en validación. Con tantos candidatos, ¿cuánto del ganador es azar? **Mi respuesta:**
+
 ### 3.6 Explicar
 
 Tres caminos, como en la demostración: ver si las características delatan algo ajeno a la hoja, ver en qué clase de hoja falla el modelo, y tapar pedazos de la foto, con $I_k=s(x)-s\bigl(x^{(k)}\bigr)$.
@@ -604,14 +650,8 @@ Con la tabla llena, respondan en tres líneas: ¿a partir de qué valor de $c$ d
 
 Dejen el cuaderno entregado con `COSTO_FALSO_NEGATIVO = 20` corrido y la tabla completa.
 
-### 4.6 Procedencia y entrega
-'''),
-("tarea", r'''
-# TAREA 19. Muestren la procedencia del dato con procedencia()["rocole"].
-''', r'''
-procedencia()["rocole"]
-'''),
-("md", r'''
+### 4.6 Entrega
+
 **Para entregar:** en Colab, menú *Archivo*, *Guardar una copia en GitHub*, y escojan su repositorio de portafolio, carpeta `clase05/`. Un cuaderno que no corre de principio a fin desde cero no se califica: antes de guardar usen *Entorno de ejecución*, *Reiniciar sesión y ejecutar todo*.
 '''),
 ]

@@ -7,7 +7,6 @@ from __future__ import annotations
 import io
 import time
 
-import numpy as np
 import pandas as pd
 import requests
 
@@ -32,7 +31,6 @@ def _pedir(url: str, intentos: int = 4, **opciones) -> requests.Response:
 RESTMEX = "https://huggingface.co/datasets/javilonso/rest23_sentiment_data/resolve/main/data/"
 RESTMEX_ARCHIVOS = {"train": "train-00000-of-00001-cfa5b64c3684b67f.parquet",
                     "test": "test-00000-of-00001-aa4ca60ff714d920.parquet"}
-RESTMEX_POR_PAIS = 20_000
 
 
 def restmex_completo() -> pd.DataFrame:
@@ -45,11 +43,10 @@ def restmex_completo() -> pd.DataFrame:
 
 
 def construir_restmex() -> pd.DataFrame:
-    """Muestra de 60.000 reseñas: 20.000 por cada valor de `Country`.
+    """Rest-Mex 2023 completo: las 251.291 reseñas de las dos particiones publicadas.
 
-    Dentro de cada país las reseñas se ordenan por su índice original y se toman
-    20.000 repartidas de manera uniforme. No hay sorteo: la muestra es siempre la
-    misma. Las columnas conservan los nombres y los códigos numéricos originales,
+    No hay muestreo. Las reseñas quedan ordenadas por partición y por su índice
+    original. Las columnas conservan los nombres y los códigos numéricos originales,
     porque el conjunto no publica su diccionario y la decodificación se hace en el
     cuaderno, a la vista.
     """
@@ -57,12 +54,8 @@ def construir_restmex() -> pd.DataFrame:
     esperadas = {"Title", "Review", "Polarity", "Country", "Type", "indice_original"}
     if not esperadas <= set(completo.columns):
         raise ValueError(f"Rest-Mex cambió de columnas: {sorted(completo.columns)}")
-    partes = []
-    for _, grupo in completo.groupby("Country"):
-        grupo = grupo.sort_values("indice_original")
-        partes.append(grupo.iloc[np.linspace(0, len(grupo) - 1, RESTMEX_POR_PAIS).astype(int)])
-    muestra = pd.concat(partes).sort_values("indice_original").reset_index(drop=True)
-    return muestra[["indice_original", "particion_original", "Title", "Review", "Polarity", "Country", "Type"]]
+    completo = completo.sort_values(["particion_original", "indice_original"], ascending=[False, True]).reset_index(drop=True)
+    return completo[["indice_original", "particion_original", "Title", "Review", "Polarity", "Country", "Type"]]
 
 
 # ------------------------------------------------------------------ SECOP II
@@ -110,12 +103,13 @@ def construir_secop(departamento: str = "Caldas") -> pd.DataFrame:
 
 FICHAS = {
     "restmex": {
-        "titulo": "Rest-Mex 2023: reseñas de turismo en español de México, Cuba y Colombia (muestra de 60.000)",
+        "titulo": "Rest-Mex 2023: reseñas de turismo en español de México, Cuba y Colombia (conjunto completo)",
         "fuente": "Rest-Mex 2023 (IberLEF), copia en Hugging Face: javilonso/rest23_sentiment_data",
         "url": "https://huggingface.co/datasets/javilonso/rest23_sentiment_data",
+        "documentacion": "https://sites.google.com/cimat.mx/rest-mex2023",   # la página de la competencia
         "licencia": "Uso académico. No se redistribuye: se descarga de la fuente.",
         "constructor": construir_restmex,
-        "md5": "c5e601a99dc0c8e5e7eb0901223ba211",
+        "md5": "f5aaed53e32a05880cb45b7b7789664f",
     },
     "secop": {
         "titulo": "SECOP II: contratos electrónicos firmados en 2022 y 2023, por departamento",

@@ -135,6 +135,7 @@ FICHAS = {
         "titulo": "HAM10000: imágenes dermatoscópicas de lesiones pigmentadas (subconjunto: melanoma y nevus con histopatología)",
         "fuente": "Tschandl, Rosendahl y Kittler (2018), Harvard Dataverse, doi:10.7910/DVN/DBW86T",
         "url": "https://doi.org/10.7910/DVN/DBW86T",
+        "documentacion": "https://doi.org/10.1038/sdata.2018.161",   # el artículo de los autores en Scientific Data
         "licencia": "CC BY-NC 4.0. Uso no comercial con cita a los autores.",
         "constructor": construir_ham10000,
         "md5": "16d84359162849ef638313c51e5f6345",   # MD5 de la tabla de metadatos; las fotos se verifican con el CRC32 del ZIP
@@ -143,6 +144,7 @@ FICHAS = {
         "titulo": "RoCoLe: 1.560 fotos de hojas de café robusta, sanas y enfermas",
         "fuente": "Parraga-Alava, Cusme, Loor y Santander (2019), Mendeley Data, doi:10.17632/c5yvn32dzg.2",
         "url": "https://data.mendeley.com/datasets/c5yvn32dzg/2",
+        "documentacion": "https://doi.org/10.1016/j.dib.2019.104414",   # el artículo de los autores en Data in Brief
         "licencia": "CC BY 4.0. Citar a los autores.",
         "constructor": construir_rocole,
         "md5": "d5e7fd580b8a3584fcc2e416bc7bea85",   # MD5 de la tabla; incluye el SHA-256 que Mendeley publica de cada foto
