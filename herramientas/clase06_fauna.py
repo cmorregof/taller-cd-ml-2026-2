@@ -24,6 +24,13 @@ Este cuaderno lo resuelve cada uno en su trabajo autónomo, porque el día de la
 
 **Cómo se trabaja.** Igual que en *La roya*: cada celda de código trae solo un comentario que dice qué debe lograr. Péguenle a Claude el bloque «Lo que Claude necesita saber», pídanle el código por secciones, léanlo, córranlo y respondan las preguntas con sus palabras.
 '''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** Las fotos de hoy salen de [Orinoquía Camera Traps, en LILA BC](https://lila.science/datasets/orinoquia-camera-traps/). Quienes las recogieron cuentan el estudio en [su artículo de *Methods in Ecology and Evolution*](https://doi.org/10.1111/2041-210X.14044). Abran los dos enlaces y explórenlos cinco minutos antes de pedirle código a Claude. Respondan mirando la fuente:
+>
+> - ¿Cuántas imágenes y cuántas clases tiene el conjunto completo?
+> - ¿Qué fracción de las imágenes está vacía?
+> - ¿Con qué licencia se publica y qué cita piden sus autores?
+'''),
 ("code", ARRANQUE),
 ("code", r'''
 CONFIANZA = 0.80        # el modelo etiqueta solo las fotos en las que su confianza llega a este valor. La cambiarán al final.
@@ -43,7 +50,7 @@ from taller.clase05_imagenes import imagenes, rasgos_guardados, guardar_rasgos
 >
 > `rasgos_guardados(nombre, filas)` devuelve una matriz de numpy ya calculada o `None`, y `guardar_rasgos(nombre, matriz)` la guarda.
 >
-> Quiero usar ResNet18 de torchvision, preentrenada en ImageNet, como extractor fijo de características, y encima modelos de scikit-learn. Todo debe correr en CPU en pocos minutos. Escribe código corto, con comentarios en español, y no uses datos que no sean los de la tabla.
+> Quiero usar ResNet18 de torchvision, preentrenada en ImageNet, como extractor fijo de características, y encima modelos de scikit-learn. Los candidatos están en un diccionario `MODELOS` que el cuaderno define en una celda propia, con el nombre de cada modelo como clave y un estimador de scikit-learn sin entrenar como valor. El código debe recorrer ese diccionario con `clone` y no nombrar modelos sueltos, salvo `MODELOS["logística"]` cuando una tarea la pida. Todo debe correr en CPU en pocos minutos. Escribe código corto, con comentarios en español, y no uses datos que no sean los de la tabla.
 '''),
 ("md", r'''
 ## 1. Formulación
@@ -56,7 +63,7 @@ El grupo quiere un modelo que diga qué especie hay en cada foto. Y quiere usarl
 2. **Explicar.** ¿El modelo reconoce al animal o reconoce el sitio donde está la cámara?
 3. **Decidir.** En cámaras nuevas, ¿cuáles fotos etiqueta el modelo solo y cuáles pasan a un biólogo?
 
-**El dato.** *Orinoquía Camera Traps* está publicado en LILA BC (Vélez y colaboradores, *Methods in Ecology and Evolution*, 2023), con la licencia Community Data License Agreement en su variante permisiva. Para el curso preparé un subconjunto: ocho especies, **una sola foto por ráfaga** (la del medio) y hasta 250 ráfagas por especie. Son 1.876 fotos de 48 cámaras. Quienes publicaron el conjunto retiraron las fotos en las que aparecen personas.
+**El dato.** *Orinoquía Camera Traps* está publicado en LILA BC (Vélez y colaboradores, *Methods in Ecology and Evolution*, 2023), con la licencia Community Data License Agreement en su variante permisiva. Para el curso preparé un subconjunto: ocho especies, **una sola foto por ráfaga** (la del medio) y hasta 250 ráfagas por especie. Son 1.876 fotos de 48 cámaras. No trabajamos con el conjunto completo porque sus imágenes pesan 72 GB y habría que pasarlas todas por la red. Quienes publicaron el conjunto retiraron las fotos en las que aparecen personas.
 
 **El dominio.** Aquí cada cámara es un dominio: tiene su fondo, su altura, su luz. El cambio de dominio es pasar de las cámaras de entrenamiento a cámaras nuevas, $P_o(x,y)\neq P_d(x,y)$.
 
@@ -81,15 +88,13 @@ La cobertura es el trabajo que el modelo le quita al biólogo. La exactitud sele
 
 ### 2.1 Descargar y contar
 
-La descarga trae 1.876 fotos de Google Cloud y tarda cerca de un minuto.
+La primera vez la descarga tarda cerca de un minuto.
 '''),
 ("tarea", r'''
-# TAREA 1. Descarguen la tabla con descargar("orinoquia") y midan el tiempo. Cuenten fotos por especie,
-# número de cámaras y fotos por cámara (mínimo, mediana, máximo). Comprueben que cada seq_id aparece una sola vez.
+# TAREA 1. Descarguen la tabla con descargar("orinoquia"). Cuenten fotos por especie, número de cámaras y
+# fotos por cámara (mínimo, mediana, máximo). Comprueben que cada seq_id aparece una sola vez.
 ''', r'''
-inicio = time.time()
 tabla = descargar("orinoquia")
-print(f"Tiempo: {time.time() - inicio:.0f} s")
 y = tabla["especie"].to_numpy()
 camara = tabla["camara"].to_numpy()
 print(len(tabla), "fotos |", tabla["camara"].nunique(), "cámaras |", tabla["especie"].nunique(), "especies")
@@ -239,20 +244,56 @@ assert not set(camara[E]) & set(camara[V]) and not set(camara[E]) & set(camara[P
 print("Ninguna cámara aparece en dos tramos.")
 '''),
 ("md", r'''
-### 3.2 Línea base y cinco modelos
+### 3.2 Línea base y catálogo de modelos
 
-La línea base tiene dos versiones: responder siempre la especie más frecuente del entrenamiento, y una regresión logística sobre seis números de color por foto (promedio y desviación de cada canal). Encima de las características compiten los cinco clasificadores de la demostración.
+La línea base tiene dos versiones: responder siempre la especie más frecuente del entrenamiento, y una regresión logística sobre seis números de color por foto (promedio y desviación de cada canal). Encima de las características compite el catálogo de modelos de la demostración.
+
+La celda siguiente es ese catálogo. Es un diccionario, `MODELOS`, con una línea por candidato, y ya viene escrita.
+
+- El texto entre comillas es el **nombre** con el que el modelo aparece en las tablas y en las gráficas.
+- `make_pipeline(...)` encadena la **preparación** (por ejemplo `StandardScaler()`, que estandariza cada columna) con el **clasificador**, que va al final. Así la preparación se ajusta solo con los datos de entrenamiento.
+- Para **agregar un modelo** escriban una línea nueva con otro nombre, importen su clase de scikit-learn al comienzo de la celda y corran el cuaderno desde ahí. Las tareas que siguen deben recorrer lo que haya en el diccionario, sin nombrar modelos sueltos.
+
+**Ejercicio.** Agreguen al menos tres modelos más de scikit-learn y vuelvan a correr. No le cambien el nombre a `"logística"`, porque varias tareas la piden por ese nombre.
+'''),
+("code", r'''
+from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.ensemble import ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+
+MODELOS = {
+    "logística": make_pipeline(StandardScaler(), LogisticRegression(C=0.01, max_iter=2000)),
+    "logística, castigo débil": make_pipeline(StandardScaler(), LogisticRegression(C=1.0, max_iter=2000)),
+    "5 vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=5)),
+    "15 vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=15)),
+    "árbol": DecisionTreeClassifier(max_depth=8, min_samples_leaf=10, random_state=SEMILLA),
+    "bosque": RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=SEMILLA),
+    "ExtraTrees": ExtraTreesClassifier(n_estimators=200, n_jobs=-1, random_state=SEMILLA),
+    "boosting": make_pipeline(StandardScaler(), PCA(n_components=30, random_state=SEMILLA), HistGradientBoostingClassifier(max_iter=60, random_state=SEMILLA)),
+    "Bayes ingenuo": make_pipeline(StandardScaler(), PCA(n_components=30, random_state=SEMILLA), GaussianNB()),
+    "discriminante lineal": make_pipeline(StandardScaler(), LinearDiscriminantAnalysis(solver="lsqr", shrinkage="auto")),
+    "SVM": make_pipeline(StandardScaler(), SVC(C=1.0, kernel="rbf")),
+    "red pequeña": make_pipeline(StandardScaler(), MLPClassifier(hidden_layer_sizes=(64,), alpha=1.0, max_iter=500, random_state=SEMILLA)),
+}
+print(len(MODELOS), "modelos en el catálogo:", ", ".join(MODELOS))
 '''),
 ("tarea", r'''
-# TAREA 8. Calculen las dos líneas base y entrenen los cinco modelos (logística, SVM, k vecinos, bosque,
-# boosting sobre componentes principales) en E. Reporten exactitud y exactitud balanceada en V y en P en
-# una tabla ordenada por la exactitud balanceada de validación, con una gráfica de barras.
+# TAREA 8. Calculen las dos líneas base. Después recorran el diccionario MODELOS: entrenen en E una copia de
+# cada modelo (clone) y reporten exactitud y exactitud balanceada en V y en P, en una tabla ordenada por la
+# exactitud balanceada de validación, con una gráfica de barras. Escojan como ganador el modelo del catálogo
+# con mayor exactitud balanceada en validación. Dibujen además una gráfica pequeña con el puesto de cada
+# modelo en validación (eje horizontal) contra su puesto en prueba (eje vertical), con la diagonal y el
+# ganador en rojo. El código no debe nombrar ningún modelo.
 ''', r'''
-from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.pipeline import make_pipeline
-from sklearn.svm import SVC
+from sklearn.base import clone
 
 def exactitud(real, predicho):
     return float(np.mean(np.asarray(real) == np.asarray(predicho)))
@@ -260,16 +301,6 @@ def exactitud(real, predicho):
 def balanceada(real, predicho):
     real, predicho = np.asarray(real), np.asarray(predicho)
     return float(np.mean([np.mean(predicho[real == k] == k) for k in np.unique(real)]))
-
-def cinco_modelos():
-    return {
-        "logística": make_pipeline(StandardScaler(), LogisticRegression(C=0.01, max_iter=2000)),
-        "SVM": make_pipeline(StandardScaler(), SVC(C=1.0, kernel="rbf")),
-        "k vecinos": make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=15)),
-        "bosque": RandomForestClassifier(n_estimators=200, n_jobs=-1, random_state=SEMILLA),
-        "boosting": make_pipeline(StandardScaler(), PCA(n_components=30, random_state=SEMILLA),
-                                  HistGradientBoostingClassifier(max_iter=60, random_state=SEMILLA)),
-    }
 
 def medir(predecir):
     return {"exactitud (val)": exactitud(y[V], predecir(V)), "balanceada (val)": balanceada(y[V], predecir(V)),
@@ -286,18 +317,34 @@ resultados = {"siempre la más frecuente": medir(lambda tramo: np.full(len(tramo
               "color (6 números)": medir(lambda tramo: base_color.predict(colores[tramo]))}
 inicio = time.time()
 entrenados = {}
-for nombre, modelo in cinco_modelos().items():
-    entrenados[nombre] = modelo.fit(X[E], y[E])
+for nombre, receta in MODELOS.items():
+    modelo = clone(receta).fit(X[E], y[E])
+    entrenados[nombre] = modelo
     resultados[nombre] = medir(lambda tramo, m=modelo: m.predict(X[tramo]))
 comparacion = pd.DataFrame(resultados).T.sort_values("balanceada (val)", ascending=False)
 print(f"Tiempo: {time.time() - inicio:.0f} s")
-comparacion[["balanceada (val)", "balanceada (prueba)"]].iloc[::-1].plot.barh(color=["#1D4E89", "#1B998B"], figsize=(8, 3.8))
+comparacion[["balanceada (val)", "balanceada (prueba)"]].iloc[::-1].plot.barh(color=["#1D4E89", "#1B998B"], figsize=(8, 5))
 plt.xlabel("exactitud balanceada en cámaras nuevas"); plt.show()
 display(comparacion.round(3))
-mejor = comparacion.loc[list(cinco_modelos()), "balanceada (val)"].idxmax()
+del_catalogo = comparacion.loc[list(MODELOS), ["balanceada (val)", "balanceada (prueba)"]]
+mejor = del_catalogo["balanceada (val)"].idxmax()
 print(f"Ganador en validación: {mejor}")
+
+puestos = del_catalogo.rank(ascending=False, method="first").astype(int)        # el puesto 1 es el mejor
+fig, eje = plt.subplots(figsize=(5, 5), facecolor="#FBFAF7")
+eje.set_facecolor("#FBFAF7")
+eje.plot([1, len(puestos)], [1, len(puestos)], color="#9AA5B1", ls=":")
+eje.scatter(puestos.iloc[:, 0], puestos.iloc[:, 1], s=45, zorder=3, color=["#D7263D" if nombre == mejor else "#1D4E89" for nombre in puestos.index])
+for nombre, fila in puestos.iterrows():
+    eje.annotate(nombre, (fila.iloc[0], fila.iloc[1]), xytext=(6, 4), textcoords="offset points", fontsize=7)
+eje.set(title="¿El orden de validación se repite en la prueba?", xlabel="puesto en validación (1 es el mejor)", ylabel="puesto en prueba",
+        xticks=range(1, len(puestos) + 1), yticks=range(1, len(puestos) + 1))
+plt.show()
+print(f"Exactitud balanceada en validación del primero y del segundo: {del_catalogo['balanceada (val)'].nlargest(2).round(3).tolist()}")
 '''),
 ("md", r'''
+**Pregunta.** El ganador salió de una lista larga. Miren cuánto se alejan los puntos de la diagonal y cuánta ventaja le sacó el primero al segundo en validación. Con tantos candidatos, ¿cuánto del ganador es azar? **Mi respuesta:**
+
 ### 3.3 La trampa: el examen en casa
 
 Ahora midan lo que habría salido con una partición al azar por foto, que mezcla las cámaras. Ese es el examen en casa: el modelo ya conoce el fondo de cada cámara.
@@ -313,7 +360,7 @@ for semilla in range(30):
     entren_c, prueba_c = partir_por_grupo(todas, camara, 0.20, semilla)
     entren_a, prueba_a = train_test_split(todas, test_size=len(prueba_c), random_state=semilla, stratify=y)
     fila = {}
-    for nombre, hacer in [("logística", lambda: cinco_modelos()["logística"]),
+    for nombre, hacer in [("logística", lambda: clone(MODELOS["logística"])),
                           ("1 vecino", lambda: make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=1)))]:
         fila[f"{nombre}, cámaras nuevas"] = exactitud(y[prueba_c], hacer().fit(X[entren_c], y[entren_c]).predict(X[prueba_c]))
         fila[f"{nombre}, al azar"] = exactitud(y[prueba_a], hacer().fit(X[entren_a], y[entren_a]).predict(X[prueba_a]))
@@ -373,7 +420,7 @@ for cuantas in [4, 8, 16, len(camaras_E)]:
         sub = E[np.isin(camara[E], elegidas)]
         if len(np.unique(y[sub])) < 2:
             continue
-        modelo = cinco_modelos()["logística"].fit(X[sub], y[sub])
+        modelo = clone(MODELOS["logística"]).fit(X[sub], y[sub])
         curva.append({"cámaras": cuantas, "fotos": len(sub), "exactitud": exactitud(y[V], modelo.predict(X[V]))})
 curva = pd.DataFrame(curva).groupby("cámaras").agg(fotos=("fotos", "mean"), exactitud=("exactitud", "mean"), desviacion=("exactitud", "std"))
 plt.figure(figsize=(7, 3.8)); plt.errorbar(curva.index, curva["exactitud"], yerr=curva["desviacion"].fillna(0), fmt="o-", color="#D7263D", capsize=3)
@@ -412,7 +459,7 @@ def regla(modelo, tramo, umbral=None):
             "exactitud sin regla": exactitud(y[tramo], predicho)}, confianza, predicho
 
 entren_a, prueba_a = train_test_split(todas, test_size=0.20, random_state=SEMILLA, stratify=y)
-en_casa = cinco_modelos()[decisor_nombre].fit(X[entren_a], y[entren_a])
+en_casa = clone(MODELOS[decisor_nombre]).fit(X[entren_a], y[entren_a])
 informe = {"en casa (al azar)": regla(en_casa, prueba_a)[0], "validación (cámaras nuevas)": regla(decisor, V)[0]}
 informe["prueba (cámaras nuevas)"], confianza_P, predicho_P = regla(decisor, P)
 
@@ -507,14 +554,8 @@ Con la tabla llena, respondan en tres líneas: ¿qué umbral le recomiendan al g
 
 Dejen el cuaderno entregado con `CONFIANZA = 0.95` corrido y la tabla completa.
 
-### 4.6 Procedencia y entrega
-'''),
-("tarea", r'''
-# TAREA 15. Muestren la procedencia del dato con procedencia()["orinoquia"].
-''', r'''
-procedencia()["orinoquia"]
-'''),
-("md", r'''
+### 4.6 Entrega
+
 **Para entregar:** en Colab, menú *Archivo*, *Guardar una copia en GitHub*, y escojan su repositorio de portafolio, carpeta `clase06/`. Un cuaderno que no corre de principio a fin desde cero no se califica: antes de guardar usen *Entorno de ejecución*, *Reiniciar sesión y ejecutar todo*.
 '''),
 ]
