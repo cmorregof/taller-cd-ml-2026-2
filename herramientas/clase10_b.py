@@ -22,6 +22,13 @@ Este cuaderno lo resuelve cada uno en la segunda mitad de la clase. Es el gemelo
 | **Uso de IA** | El código lo escribe Claude a pedido de ustedes. Deben poder explicar sin ayuda qué decidieron hacer con los meses que no aparecen en la tabla, cómo se calcula el intervalo de la pérdida, por qué no se comparan años calendario incompletos y qué muestra cada panel del tablero. |
 | **Entregable** | El cuaderno corrido en su portafolio y el archivo `tablero_vuelos.html` que el cuaderno genera. |
 '''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** El tráfico aéreo de hoy lo publica la Aeronáutica Civil en el portal de datos abiertos del Estado. Abran la [página del conjunto](https://www.datos.gov.co/d/gb6w-ynu4) y explórenla cinco minutos. Miren la descripción, la lista de columnas y la fecha de la última actualización. Las coordenadas de los aeropuertos vienen de [OurAirports](https://ourairports.com/data/), que no es fuente oficial. Respondan mirando la fuente:
+>
+> - ¿Qué entidad publica el conjunto y cuándo se actualizó por última vez?
+> - ¿Qué es una fila: un vuelo, una ruta o un mes de una empresa en un trayecto?
+> - ¿Qué licencia tiene el conjunto y cómo se cita?
+'''),
 ("dado", ARRANQUE),
 ("dado", r'''
 # Los parámetros del cuaderno. Al final se cambia la primera línea y se corre todo de nuevo.
@@ -304,12 +311,8 @@ Para quien se va a sentar con las aerolíneas.
 
 ¿Qué cuentan las dos tablas juntas que ninguna cuenta sola? **Mi respuesta:**
 
-### Procedencia y entrega
-'''),
-("dado", r'''
-{nombre: ficha for nombre, ficha in procedencia().items() if nombre in ("vuelos", "aeropuertos")}
-'''),
-("md", r'''
+### Entrega
+
 **Para entregar:** el cuaderno corrido y `tablero_vuelos.html` en su portafolio, carpeta `clase10/`. En Colab el tablero queda en el panel de archivos: descárguenlo y súbanlo junto al cuaderno.
 '''),
 ]
