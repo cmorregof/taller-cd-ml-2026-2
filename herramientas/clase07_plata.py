@@ -16,13 +16,20 @@ Este cuaderno lo resuelve cada uno, de forma individual, en la segunda mitad de 
 
 | Ficha | |
 |---|---|
-| **Objetivo pedagógico** | Repetir por cuenta propia el camino de la clase con el objeto de los contratos públicos: convertir texto en TF-IDF, comparar cinco clasificadores contra una línea base, medir cuánto cambia el resultado según cómo se parta y convertir un puntaje en una lista de contratos para revisar. |
+| **Objetivo pedagógico** | Repetir por cuenta propia el camino de la clase con el objeto de los contratos públicos: convertir texto en TF-IDF, comparar un catálogo de clasificadores contra una línea base, medir cuánto cambia el resultado según cómo se parta y convertir un puntaje en una lista de contratos para revisar. |
 | **Enfoque** | Ciencia de Datos. |
 | **Resultados de aprendizaje** | 1 (formular), 2 (seleccionar y preparar datos), 3 (flujo reproducible), 4 (implementar y evaluar), 5 (comunicar) y 6 (reflexión ética, técnica y operativa). |
 | **Uso de IA** | El código lo escribe Claude y ustedes lo auditan. Deben poder explicar sin ayuda qué columnas no pueden entrar al modelo y por qué, por qué la partición es por fecha, qué significa la precisión entre los primeros cincuenta y qué no dice el modelo sobre un contrato. |
 | **Entregable** | El cuaderno completo y corrido en su portafolio de GitHub, con las predicciones escritas, las respuestas, la auditoría, la decisión en tres frases y la tabla de la variante llenas. |
 
 **Cómo se trabaja.** Como en las dos clases anteriores: cada celda de código trae solo un comentario que dice qué debe lograr. Péguenle a Claude el bloque «Lo que Claude necesita saber», pídanle el código por secciones, léanlo, córranlo y respondan las preguntas con sus palabras.
+'''),
+("md", r'''
+> **Antes de empezar: conozcan la fuente.** Los contratos de hoy salen del conjunto [SECOP II, Contratos Electrónicos, en datos.gov.co](https://www.datos.gov.co/d/jbjy-vk9h). La misma página trae el diccionario de las columnas. Ábranla y explórenla cinco minutos antes de pedirle código a Claude. Respondan mirando la fuente:
+>
+> - ¿Qué entidad publica el conjunto y cuándo fue su última actualización?
+> - ¿Qué es una fila: un proceso de contratación, un contrato o un pago?
+> - ¿Cómo describe el diccionario la columna «Dias adicionados», y qué licencia tiene el conjunto?
 '''),
 ("code", ARRANQUE),
 ("code", r'''
@@ -39,7 +46,7 @@ import time
 >
 > `tabla = descargar("secop", departamento=DEPARTAMENTO)` devuelve un DataFrame con una fila por contrato de SECOP II firmado en 2022 o 2023 por una entidad de ese departamento. Columnas: `id_contrato`, `nombre_entidad`, `nit_entidad`, `departamento`, `ciudad`, `orden`, `sector`, `tipo_de_contrato`, `modalidad_de_contratacion`, `estado_contrato`, `codigo_de_categoria_principal`, `fecha_de_firma`, `fecha_de_inicio_del_contrato`, `fecha_de_fin_del_contrato` (las tres fechas como texto), `valor_del_contrato`, `dias_adicionados`, `es_pyme` y `objeto_del_contrato` (texto libre de hasta 500 caracteres).
 >
-> Quiero predecir si un contrato tendrá prórroga (`dias_adicionados > 0`) usando **solo lo que se sabe el día de la firma**, sobre todo el texto de `objeto_del_contrato`, con TF-IDF y modelos de scikit-learn. No puedes usar como entrada `dias_adicionados`, `estado_contrato` ni `fecha_de_fin_del_contrato`. El vectorizador se ajusta solo con el entrenamiento. Escribe código corto, con comentarios en español, que corra en CPU en pocos minutos.
+> Quiero predecir si un contrato tendrá prórroga (`dias_adicionados > 0`) usando **solo lo que se sabe el día de la firma**, sobre todo el texto de `objeto_del_contrato`, con TF-IDF y modelos de scikit-learn. Los candidatos están en un diccionario `MODELOS` que el cuaderno define en una celda propia, con el nombre de cada modelo como clave y un estimador de scikit-learn sin entrenar como valor. El código debe recorrer ese diccionario con `clone` y no nombrar modelos sueltos, salvo `MODELOS["logística"]` y `MODELOS["Bayes ingenuo"]` cuando una tarea los pida. No puedes usar como entrada `dias_adicionados`, `estado_contrato` ni `fecha_de_fin_del_contrato`. El vectorizador se ajusta solo con el entrenamiento. Escribe código corto, con comentarios en español, que corra en CPU en pocos minutos.
 '''),
 ("md", r'''
 ## 1. Formulación
@@ -73,15 +80,13 @@ Si $\pi$ es la proporción de prórrogas, escoger al azar da $P@k\approx\pi$. La
 
 ### 2.1 Descargar y mirar
 
-La descarga pagina de a 10.000 contratos y tarda cerca de medio minuto.
+La descarga tarda cerca de medio minuto.
 '''),
 ("tarea", r'''
-# TAREA 1. Descarguen la tabla con descargar("secop", departamento=DEPARTAMENTO) y midan el tiempo. Conviertan
-# fecha_de_firma a fecha. Reporten contratos, entidades, rango de fechas de firma y contratos por año.
+# TAREA 1. Descarguen la tabla con descargar("secop", departamento=DEPARTAMENTO). Conviertan fecha_de_firma
+# a fecha. Reporten contratos, entidades, rango de fechas de firma y contratos por año.
 ''', r'''
-inicio = time.time()
 tabla = descargar("secop", departamento=DEPARTAMENTO)
-print(f"Tiempo: {time.time() - inicio:.0f} s")
 tabla["firma"] = pd.to_datetime(tabla["fecha_de_firma"])
 tabla = tabla.sort_values("firma").reset_index(drop=True)
 print(len(tabla), "contratos |", tabla["nombre_entidad"].nunique(), "entidades |", tabla["firma"].min().date(), "a", tabla["firma"].max().date())
@@ -138,7 +143,7 @@ for texto, veces in normal.value_counts().head(5).items():
 
 - ¿Por qué hay tantos objetos repetidos? Piensen en cómo se redacta un contrato de prestación de servicios. **Mi respuesta:**
 - Lean el objeto más repetido de su lista. ¿Describe algún trabajo? ¿Qué hacen con esos contratos: los quitan, los dejan, los marcan? Escriban la decisión en la bitácora. **Mi respuesta:**
-- En la demostración, las reseñas repetidas eran 1 % y casi no cambiaron el resultado. Con la proporción que acaban de medir, ¿qué esperan aquí si parten al azar? **Mi respuesta:**
+- En la demostración, las reseñas repetidas eran pocas y movieron poco el resultado. Con la proporción que acaban de medir, ¿qué esperan aquí si parten al azar? **Mi respuesta:**
 - A diferencia de las reseñas, aquí no pueden simplemente borrar las repeticiones: son contratos distintos. ¿Qué hacen entonces? **Mi respuesta:**
 
 ### 2.3 Partición y TF-IDF
@@ -246,30 +251,50 @@ anotar("planilla (sin texto)", planilla.predict_proba(tabla.iloc[V])[:, 1], plan
 display(pd.DataFrame(resultados).T.round(3))
 '''),
 ("md", r'''
-### 3.2 Cinco modelos sobre el texto
+### 3.2 El catálogo de modelos
 
-Los mismos cinco de la demostración: Bayes ingenuo, regresión logística, máquina de soporte vectorial lineal, regresión *ridge*, y LSA con *boosting*. La logística modela $P(y=1\mid d)=\sigma(\beta_0+\sum_t\beta_t\,w_{t,d})$.
+La celda siguiente es el catálogo de candidatos, el mismo de la demostración. Es un diccionario, `MODELOS`, con una línea por modelo, y ya viene escrita. La logística modela $P(y=1\mid d)=\sigma(\beta_0+\sum_t\beta_t\,w_{t,d})$.
+
+- El texto entre comillas es el **nombre** con el que el modelo aparece en las tablas y en las gráficas.
+- Lo que sigue es el **clasificador**. Cuando necesita una preparación propia, `make_pipeline(...)` la encadena delante. Aquí la usan los dos modelos que primero reducen la matriz a pocas dimensiones.
+- Para **agregar un modelo** escriban una línea nueva con otro nombre, importen su clase de scikit-learn al comienzo de la celda y corran el cuaderno desde ahí. Las tareas que siguen deben recorrer lo que haya en el diccionario, sin nombrar modelos sueltos.
+
+**Ejercicio.** Agreguen al menos tres modelos más de scikit-learn y vuelvan a correr. La matriz es dispersa y muy ancha, así que un modelo que no acepte matrices dispersas necesita la reducción delante. No les cambien el nombre a `"logística"` ni a `"Bayes ingenuo"`, porque una tarea los pide por ese nombre.
 '''),
-("tarea", r'''
-# TAREA 7. Entrenen los cinco modelos sobre la matriz TF-IDF de E. Reporten AP y P@AUDITORES en V y en P en una
-# tabla (con las líneas base), ordenada por AP de validación, y dibujen las curvas de precisión contra
-# sensibilidad en validación. Escojan como ganador el de mayor AP en validación.
-''', r'''
+("code", r'''
 from sklearn.decomposition import TruncatedSVD
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.ensemble import HistGradientBoostingClassifier
-from sklearn.linear_model import RidgeClassifier
-from sklearn.naive_bayes import ComplementNB
+from sklearn.linear_model import LogisticRegression, RidgeClassifier, SGDClassifier
+from sklearn.naive_bayes import BernoulliNB, ComplementNB, MultinomialNB
+from sklearn.pipeline import make_pipeline
 from sklearn.svm import LinearSVC
 
-def cinco_modelos():
-    return {
-        "Bayes ingenuo": ComplementNB(alpha=0.3),
-        "logística": LogisticRegression(C=3, max_iter=2000, class_weight="balanced"),
-        "SVM lineal": LinearSVC(C=0.1, class_weight="balanced"),
-        "ridge": RidgeClassifier(alpha=3.0, class_weight="balanced"),
-        "LSA + boosting": make_pipeline(TruncatedSVD(n_components=100, random_state=SEMILLA),
-                                        HistGradientBoostingClassifier(max_iter=100, class_weight="balanced", random_state=SEMILLA)),
-    }
+MODELOS = {
+    "Bayes ingenuo": ComplementNB(alpha=0.3),
+    "Bayes multinomial": MultinomialNB(alpha=0.1),
+    "Bayes de Bernoulli": BernoulliNB(alpha=0.1),
+    "logística": LogisticRegression(C=3, max_iter=2000, class_weight="balanced"),
+    "logística, castigo fuerte": LogisticRegression(C=0.3, max_iter=2000, class_weight="balanced"),
+    "SVM lineal": LinearSVC(C=0.1, class_weight="balanced"),
+    "SVM lineal, castigo fuerte": LinearSVC(C=0.01, class_weight="balanced"),
+    "ridge": RidgeClassifier(alpha=3.0, class_weight="balanced"),
+    "descenso estocástico": SGDClassifier(loss="log_loss", alpha=1e-6, class_weight="balanced", random_state=SEMILLA),
+    "descenso estocástico, Huber": SGDClassifier(loss="modified_huber", alpha=1e-5, class_weight="balanced", random_state=SEMILLA),
+    "LSA + boosting": make_pipeline(TruncatedSVD(n_components=100, random_state=SEMILLA), HistGradientBoostingClassifier(max_iter=100, class_weight="balanced", random_state=SEMILLA)),
+    "LSA + discriminante lineal": make_pipeline(TruncatedSVD(n_components=100, random_state=SEMILLA), LinearDiscriminantAnalysis()),
+}
+print(len(MODELOS), "modelos en el catálogo:", ", ".join(MODELOS))
+'''),
+("tarea", r'''
+# TAREA 7. Recorran el diccionario MODELOS: entrenen una copia de cada modelo (clone) sobre la matriz TF-IDF de E.
+# Reporten AP y P@AUDITORES en V y en P en una tabla (con las líneas base), ordenada por AP de validación, y
+# dibujen las curvas de precisión contra sensibilidad en validación. Escojan como ganador el modelo del catálogo
+# con mayor AP en validación. Dibujen además una gráfica pequeña con el puesto de cada modelo en validación
+# (eje horizontal) contra su puesto en prueba (eje vertical), según la AP, con la diagonal y el ganador en rojo.
+# El código no debe nombrar ningún modelo.
+''', r'''
+from sklearn.base import clone
 
 def puntaje(modelo, matriz):
     if hasattr(modelo, "decision_function"):
@@ -278,24 +303,39 @@ def puntaje(modelo, matriz):
 
 inicio = time.time()
 entrenados = {}
-plt.figure(figsize=(7.5, 4.5))
-for nombre, modelo in cinco_modelos().items():
-    entrenados[nombre] = modelo.fit(X_E, y[E])
+plt.figure(figsize=(8.5, 5))
+for i, (nombre, receta) in enumerate(MODELOS.items()):
+    modelo = clone(receta).fit(X_E, y[E])
+    entrenados[nombre] = modelo
     anotar(nombre, puntaje(modelo, X_V), puntaje(modelo, X_P))
     precision, sensibilidad, _ = precision_recall_curve(y[V], puntaje(modelo, X_V))
-    plt.plot(sensibilidad, precision, label=f"{nombre} ({resultados[nombre]['AP (val)']:.3f})")
+    plt.plot(sensibilidad, precision, ls="-" if i < len(PALETA) else "--", label=f"{nombre} ({resultados[nombre]['AP (val)']:.3f})")
 plt.axhline(y[V].mean(), color="gray", ls=":"); plt.ylim(0, 1)
-plt.xlabel("sensibilidad"); plt.ylabel("precisión"); plt.title("Validación (punteada: escoger al azar)"); plt.legend(fontsize=8); plt.show()
+plt.xlabel("sensibilidad"); plt.ylabel("precisión"); plt.title("Validación (punteada: escoger al azar)"); plt.legend(fontsize=7); plt.show()
 print(f"Tiempo: {time.time() - inicio:.0f} s")
 comparacion = pd.DataFrame(resultados).T.sort_values("AP (val)", ascending=False)
 display(comparacion.round(3))
-mejor = comparacion.loc[list(cinco_modelos()), "AP (val)"].idxmax()
+del_catalogo = comparacion.loc[list(MODELOS), ["AP (val)", "AP (prueba)"]]
+mejor = del_catalogo["AP (val)"].idxmax()
 ganador = entrenados[mejor]
 print(f"Ganador en validación: {mejor}")
+
+puestos = del_catalogo.rank(ascending=False, method="first").astype(int)        # el puesto 1 es la mejor AP
+fig, eje = plt.subplots(figsize=(5, 5), facecolor="#FBFAF7")
+eje.set_facecolor("#FBFAF7")
+eje.plot([1, len(puestos)], [1, len(puestos)], color="#9AA5B1", ls=":")
+eje.scatter(puestos.iloc[:, 0], puestos.iloc[:, 1], s=45, zorder=3, color=["#D7263D" if nombre == mejor else "#1D4E89" for nombre in puestos.index])
+for nombre, fila in puestos.iterrows():
+    eje.annotate(nombre, (fila.iloc[0], fila.iloc[1]), xytext=(6, 4), textcoords="offset points", fontsize=7)
+eje.set(title="¿El orden de validación se repite en la prueba?", xlabel="puesto en validación (1 es el mejor)", ylabel="puesto en prueba",
+        xticks=range(1, len(puestos) + 1), yticks=range(1, len(puestos) + 1))
+plt.show()
+print(f"AP en validación del primero y del segundo: {del_catalogo['AP (val)'].nlargest(2).round(3).tolist()}")
 '''),
 ("md", r'''
 **Preguntas.**
 
+- El ganador salió de una lista larga. Miren cuánto se alejan los puntos de la diagonal y cuánta ventaja le sacó el primero al segundo en validación. Con tantos candidatos, ¿cuánto del ganador es azar? **Mi respuesta:**
 - ¿El texto le gana a la planilla? ¿Por cuánto, y es consistente entre validación y prueba? **Mi respuesta:**
 - La precisión entre los primeros 50 se calcula con 50 contratos. ¿Cuánto puede moverse por azar? **Mi respuesta:**
 
@@ -318,7 +358,7 @@ objeto_normal = tabla["objeto_normal"].to_numpy()
 def examen(entren, prueba):
     fila = {"% de la prueba ya visto": 100 * np.isin(objeto_normal[prueba], objeto_normal[entren]).mean()}
     for nombre in ["logística", "Bayes ingenuo"]:
-        tuberia = make_pipeline(vectorizador(), cinco_modelos()[nombre]).fit(textos[entren], y[entren])
+        tuberia = make_pipeline(vectorizador(), clone(MODELOS[nombre])).fit(textos[entren], y[entren])
         cifras = medir(y[prueba], puntaje(tuberia, textos[prueba]))
         fila[f"{nombre}: AP"], fila[f"{nombre}: P@{AUDITORES}"] = cifras["AP"], cifras[f"P@{AUDITORES}"]
     fila["proporción de prórrogas"] = y[prueba].mean()
@@ -480,14 +520,8 @@ Con la tabla llena, respondan en tres líneas: ¿la receta sirve igual en los do
 
 Dejen el cuaderno entregado con `DEPARTAMENTO = "Risaralda"` corrido y la tabla completa.
 
-### 4.6 Procedencia y entrega
-'''),
-("tarea", r'''
-# TAREA 12. Muestren la procedencia del dato con procedencia()["secop"].
-''', r'''
-procedencia()["secop"]
-'''),
-("md", r'''
+### 4.6 Entrega
+
 **Para entregar:** en Colab, menú *Archivo*, *Guardar una copia en GitHub*, y escojan su repositorio de portafolio, carpeta `clase07/`. Un cuaderno que no corre de principio a fin desde cero no se califica: antes de guardar usen *Entorno de ejecución*, *Reiniciar sesión y ejecutar todo*.
 '''),
 ]
