@@ -55,6 +55,11 @@ PORTADAS = {
                 lineas=["Can you predict", "tomorrow's price", "of electricity?"],
                 bajada=["Four years of prices against the reservoirs"],
                 firma="Carlos Manuel Orrego Franco", fuente="Data: XM, SiMEM", desliza="Swipe  →", velo=730),
+    "dengue": dict(foto="documentos/posts/fotos/dengue_terraza.png", salida="documentos/posts/dengue_01_portada.png",
+                   etiqueta="DENGUE EN BUCARAMANGA", contexto="28.520 casos, 2015 a 2025",
+                   lineas=["¿Quién pronostica", "mejor el dengue?"],
+                   bajada=["Un modelo de epidemias contra el", "aprendizaje automático"],
+                   firma="Carlos Manuel Orrego Franco", fuente="Datos: SIVIGILA, Alcaldía de Bucaramanga", desliza="Desliza  →", velo=600),
 }
 
 if __name__ == '__main__':
